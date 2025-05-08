@@ -43,25 +43,48 @@ uv pip install -e .
 
 ### Building the Windows Executable
 
-If you want to build the executable yourself:
+If you want to build the executable yourself, there are several methods available:
 
-1. Clone the repository and navigate to the project directory
-2. Make sure you have either `pip` or `uv` installed for package management
+#### Option 1: Using the build script (Recommended)
+
+This is the simplest method that handles all dependencies automatically:
+
+1. Clone the repository and navigate to the project directory:
+   ```cmd
+   git clone https://github.com/yourusername/gpxmapper.git
+   cd gpxmapper
+   ```
+
+2. Make sure you have either `pip` or `uv` installed for package management:
+   ```cmd
+   # Check if pip is installed
+   python -m pip --version
+
+   # OR check if uv is installed
+   uv --version
+
+   # Install uv if needed
+   python -m pip install uv
+   ```
+
 3. Run the build script:
+   ```cmd
+   python build_exe.py
+   ```
 
-```cmd
-python build_exe.py
-```
+4. The script will automatically:
+   - Install PyInstaller if not already installed
+   - Read configuration from pyproject.toml
+   - Create a spec file
+   - Build the executable
+   - Clean up temporary files
 
-4. The script will install PyInstaller and build the executable
 5. The executable will be created in the `dist` directory as `gpxmapper.exe`
+
 6. You can test the executable by running:
-
-```cmd
-.\dist\gpxmapper.exe --help
-```
-
-Note: The build process may take a few minutes as it packages all dependencies into a single executable file.
+   ```cmd
+   .\dist\gpxmapper.exe --help
+   ```
 
 ## Usage
 

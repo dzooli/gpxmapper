@@ -144,4 +144,8 @@ cover/
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow
 __pypackages__/
 
+*.gpx
+*.mp4
+
+
 
