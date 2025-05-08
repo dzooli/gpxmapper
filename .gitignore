@@ -82,6 +82,8 @@ fabric.properties
 __pycache__/
 *.py[cod]
 *$py.class
+.venv
+venv
 
 # C extensions
 *.so

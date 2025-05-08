@@ -4,7 +4,7 @@ import os
 import math
 import io
 import requests
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Dict
 from PIL import Image, ImageDraw
 import logging
 from pathlib import Path
@@ -47,6 +47,8 @@ class MapRenderer:
         """
         self.tile_server = tile_server
         self.cache_dir = cache_dir
+        self.composite_map = None
+        self.composite_map_info = None
 
         if cache_dir:
             os.makedirs(cache_dir, exist_ok=True)
@@ -180,6 +182,61 @@ class MapRenderer:
 
         return tiles
 
+    def create_composite_map(self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int) -> Image.Image:
+        """Create a large composite image from all tiles in the bounding box.
+
+        Args:
+            min_lat: Minimum latitude
+            min_lon: Minimum longitude
+            max_lat: Maximum latitude
+            max_lon: Maximum longitude
+            zoom: Zoom level
+
+        Returns:
+            PIL Image of the composite map
+        """
+        # Get tile coordinates for the bounding box
+        min_x, max_y = self.deg2num(min_lat, min_lon, zoom)
+        max_x, min_y = self.deg2num(max_lat, max_lon, zoom)
+
+        # Calculate the size of the composite image
+        width = (max_x - min_x + 1) * 256
+        height = (max_y - min_y + 1) * 256
+
+        # Create a blank image
+        composite = Image.new('RGB', (width, height))
+
+        # Fetch and place all tiles
+        for x in range(min_x, max_x + 1):
+            for y in range(min_y, max_y + 1):
+                tile = self.fetch_tile(x, y, zoom)
+                if tile and tile.image:
+                    # Calculate position in the composite image
+                    pos_x = (x - min_x) * 256
+                    pos_y = (y - min_y) * 256
+                    composite.paste(tile.image, (pos_x, pos_y))
+                else:
+                    # If tile is missing, create a blank tile
+                    logger.warning(f"Missing tile at {x},{y}, zoom {zoom}")
+                    blank_tile = Image.new('RGB', (256, 256), (200, 200, 200))
+                    pos_x = (x - min_x) * 256
+                    pos_y = (y - min_y) * 256
+                    composite.paste(blank_tile, (pos_x, pos_y))
+
+        # Store the composite map and its metadata
+        self.composite_map = composite
+        self.composite_map_info = {
+            'min_x': min_x,
+            'min_y': min_y,
+            'max_x': max_x,
+            'max_y': max_y,
+            'zoom': zoom,
+            'width': width,
+            'height': height
+        }
+
+        return composite
+
     def render_map_for_point(self, lat: float, lon: float, zoom: int, 
                             marker_color: Tuple[int, int, int] = (255, 0, 0),
                             marker_size: int = 10) -> Optional[Image.Image]:
@@ -218,6 +275,83 @@ class MapRenderer:
         draw.ellipse(
             (x_pixel - marker_size//2, y_pixel - marker_size//2, 
              x_pixel + marker_size//2, y_pixel + marker_size//2), 
+            fill=marker_color
+        )
+
+        return result
+
+    def render_from_composite(self, lat: float, lon: float, frame_width: int, frame_height: int,
+                             marker_color: Tuple[int, int, int] = (255, 0, 0),
+                             marker_size: int = 10) -> Optional[Image.Image]:
+        """Render a map from the composite map centered on the given coordinates with a marker.
+
+        Args:
+            lat: Latitude in degrees
+            lon: Longitude in degrees
+            frame_width: Width of the output frame in pixels
+            frame_height: Height of the output frame in pixels
+            marker_color: RGB color tuple for the marker
+            marker_size: Size of the marker in pixels
+
+        Returns:
+            PIL Image of the rendered map or None if rendering failed
+        """
+        # Check if composite map exists
+        if self.composite_map is None or self.composite_map_info is None:
+            logger.error("Composite map not created. Call create_composite_map first.")
+            return None
+
+        # Get zoom level from composite map info
+        zoom = self.composite_map_info['zoom']
+
+        # Calculate pixel coordinates within the composite map
+        n = 2.0 ** zoom
+        lat_rad = math.radians(lat)
+        global_x = int((lon + 180.0) / 360.0 * n * 256)
+        global_y = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n * 256)
+
+        # Calculate position in the composite map
+        min_x = self.composite_map_info['min_x']
+        min_y = self.composite_map_info['min_y']
+
+        # Position in the composite map (pixels)
+        x_pixel = (global_x - min_x * 256)
+        y_pixel = (global_y - min_y * 256)
+
+        # Calculate the crop box
+        left = max(0, x_pixel - frame_width // 2)
+        top = max(0, y_pixel - frame_height // 2)
+        right = min(self.composite_map_info['width'], left + frame_width)
+        bottom = min(self.composite_map_info['height'], top + frame_height)
+
+        # Adjust if we hit the edge of the composite map
+        if right - left < frame_width:
+            if left == 0:
+                right = min(self.composite_map_info['width'], frame_width)
+            else:
+                left = max(0, right - frame_width)
+
+        if bottom - top < frame_height:
+            if top == 0:
+                bottom = min(self.composite_map_info['height'], frame_height)
+            else:
+                top = max(0, bottom - frame_height)
+
+        # Crop the composite map
+        cropped = self.composite_map.crop((left, top, right, bottom))
+
+        # Create a copy of the cropped image to draw on
+        result = cropped.copy()
+        draw = ImageDraw.Draw(result)
+
+        # Calculate marker position in the cropped image
+        marker_x = x_pixel - left
+        marker_y = y_pixel - top
+
+        # Draw the marker
+        draw.ellipse(
+            (marker_x - marker_size//2, marker_y - marker_size//2, 
+             marker_x + marker_size//2, marker_y + marker_size//2), 
             fill=marker_color
         )
 

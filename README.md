@@ -139,6 +139,8 @@ gpxmapper.exe info path\to\your\file.gpx
 - `--zoom`, `-z`: Zoom level for the map (1-19, higher is more detailed) (default: 15)
 - `--marker-size`, `-m`: Size of the position marker in pixels (default: 10)
 - `--marker-color`, `-c`: Color of the position marker as R,G,B (default: 255,0,0)
+- `--timestamp-color`, `-tc`: Color of the timestamp text as R,G,B (default: 0,0,0)
+- `--timestamp-font-scale`, `-ts`: Font scale for the timestamp text (default: 0.7)
 
 ### `info` command
 
@@ -181,6 +183,18 @@ gpxmapper generate my_run.gpx --marker-color 0,0,255 --marker-size 15
 For Windows executable:
 ```cmd
 gpxmapper.exe generate my_run.gpx --marker-color 0,0,255 --marker-size 15
+```
+
+### Customize the timestamp appearance
+
+For Python installation:
+```bash
+gpxmapper generate my_run.gpx --timestamp-color 255,255,255 --timestamp-font-scale 1.0
+```
+
+For Windows executable:
+```cmd
+gpxmapper.exe generate my_run.gpx --timestamp-color 255,255,255 --timestamp-font-scale 1.0
 ```
 
 ## License
