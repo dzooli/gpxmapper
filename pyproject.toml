@@ -3,6 +3,7 @@
 # Build:
 #   - Development: pip install -e .
 #   - Executable: python build_exe.py
+#   - Executable (alt): pyinstaller exe_entry_point.py --name=gpxmapper --onefile --console
 #   - Package: python -m build
 
 [build-system]
@@ -27,9 +28,31 @@ dependencies = [
     "numpy>=1.24.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+]
+
 [project.scripts]
 gpxmapper = "gpxmapper.cli:app"
 
+[tool.pyinstaller]
+# PyInstaller configuration for building standalone executable
+options = [
+    "--name=gpxmapper",
+    "--onefile",
+    "--console",
+    "--hidden-import=gpxpy",
+    "--hidden-import=typer",
+    "--hidden-import=cv2",
+    "--hidden-import=requests",
+    "--hidden-import=PIL",
+    "--hidden-import=numpy",
+    "--specpath=.",
+]
+entry_point = "exe_entry_point.py"
 
-
-
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.0.0",
+    "tomli>=2.2.1",
+]
