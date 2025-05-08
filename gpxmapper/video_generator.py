@@ -1,18 +1,19 @@
 """Video generation module for creating videos from GPX tracks."""
 
+import logging
 import os
+import tempfile
+from datetime import datetime, timedelta
+from typing import List, Tuple
+
 import cv2
 import numpy as np
-from typing import List, Tuple, Optional, Dict, Any
-from datetime import datetime, timedelta
-import logging
-from pathlib import Path
-import tempfile
 
 from .gpx_parser import GPXTrackPoint
 from .map_renderer import MapRenderer
 
 logger = logging.getLogger(__name__)
+
 
 class VideoGenerator:
     """Generates videos from GPX tracks with map visualization."""
@@ -43,8 +44,8 @@ class VideoGenerator:
         self.timestamp_font_scale = timestamp_font_scale
         self.map_renderer = MapRenderer(cache_dir=os.path.join(tempfile.gettempdir(), "gpxmapper_tiles"))
 
-    def _interpolate_position(self, track_points: List[GPXTrackPoint], 
-                             timestamp: datetime) -> Tuple[float, float]:
+    def _interpolate_position(self, track_points: List[GPXTrackPoint],
+                              timestamp: datetime) -> Tuple[float, float]:
         """Interpolate position at a given timestamp between track points.
 
         Args:
@@ -93,6 +94,73 @@ class VideoGenerator:
         # This should not happen if the timestamp check above is correct
         raise ValueError(f"Failed to interpolate position for timestamp {timestamp}")
 
+    def _generate_frame(self, frame_idx: int, frame_timestamp: datetime,
+                        points_with_time: List[GPXTrackPoint]) -> np.ndarray:
+        """Generate a single video frame.
+
+        Args:
+            frame_idx: Index of the frame
+            frame_timestamp: Timestamp for this frame
+            points_with_time: List of track points with time data
+
+        Returns:
+            Frame as numpy array in BGR format
+        """
+        # Interpolate position
+        lat, lon = self._interpolate_position(points_with_time, frame_timestamp)
+
+        # Render map for this position from the composite map
+        map_image = self.map_renderer.render_from_composite(
+            lat, lon, self.width, self.height, self.marker_color, self.marker_size
+        )
+
+        if map_image is None:
+            logger.warning(f"Failed to render map for frame {frame_idx}, using blank frame")
+            # Create a blank frame
+            frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+        else:
+            # Convert PIL image to numpy array
+            map_array = np.array(map_image)
+
+            # Convert from RGB to BGR (OpenCV uses BGR)
+            frame = cv2.cvtColor(map_array, cv2.COLOR_RGB2BGR)
+
+        # Add timestamp text
+        timestamp_str = frame_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        cv2.putText(
+            frame, timestamp_str, (10, self.height - 20),
+            cv2.FONT_HERSHEY_SIMPLEX, self.timestamp_font_scale, self.timestamp_color, 2
+        )
+
+        return frame
+
+    def _write_video_frames(self, video_writer: cv2.VideoWriter, points_with_time: List[GPXTrackPoint],
+                            duration_seconds: int, start_time: datetime, total_track_seconds: float) -> None:
+        """Write frames to video file.
+        
+        Args:
+            video_writer: OpenCV VideoWriter object
+            points_with_time: List of track points with time data
+            duration_seconds: Duration of the video in seconds
+            start_time: Start time of the track
+            total_track_seconds: Total duration of the track in seconds
+        """
+        # Calculate total number of frames
+        total_frames = duration_seconds * self.fps
+
+        for frame_idx in range(total_frames):
+            # Calculate timestamp for this frame
+            progress = frame_idx / total_frames
+            frame_seconds = progress * total_track_seconds
+            frame_timestamp = start_time + timedelta(seconds=frame_seconds)
+
+            frame = self._generate_frame(frame_idx, frame_timestamp, points_with_time)
+            video_writer.write(frame)
+
+            # Log progress
+            if frame_idx % (self.fps * 5) == 0:  # Log every 5 seconds of video
+                logger.info(f"Generated {frame_idx}/{total_frames} frames ({frame_idx / total_frames:.1%})")
+
     def generate_video(self, track_points: List[GPXTrackPoint], duration_seconds: int) -> str:
         """Generate a video from GPX track points.
 
@@ -111,7 +179,7 @@ class VideoGenerator:
         if not points_with_time:
             raise ValueError("Track points don't have time data")
 
-        # Sort points by time
+        # Sort points by time  
         points_with_time.sort(key=lambda p: p.time)
 
         # Get time range
@@ -140,7 +208,8 @@ class VideoGenerator:
         # Create a composite map for the entire track
         logger.info(f"Creating composite map at zoom level {self.zoom_level}...")
         self.map_renderer.create_composite_map(min_lat, min_lon, max_lat, max_lon, self.zoom_level)
-        logger.info(f"Composite map created with size {self.map_renderer.composite_map_info['width']}x{self.map_renderer.composite_map_info['height']} pixels")
+        logger.info(
+            f"Composite map created with size {self.map_renderer.composite_map_info['width']}x{self.map_renderer.composite_map_info['height']} pixels")
 
         # Initialize video writer
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use mp4v codec
@@ -152,48 +221,7 @@ class VideoGenerator:
             raise ValueError(f"Failed to open video writer for {self.output_path}")
 
         try:
-            # Calculate total number of frames
-            total_frames = duration_seconds * self.fps
-
-            for frame_idx in range(total_frames):
-                # Calculate timestamp for this frame
-                progress = frame_idx / total_frames
-                frame_seconds = progress * total_track_seconds
-                frame_timestamp = start_time + timedelta(seconds=frame_seconds)
-
-                # Interpolate position
-                lat, lon = self._interpolate_position(points_with_time, frame_timestamp)
-
-                # Render map for this position from the composite map
-                map_image = self.map_renderer.render_from_composite(
-                    lat, lon, self.width, self.height, self.marker_color, self.marker_size
-                )
-
-                if map_image is None:
-                    logger.warning(f"Failed to render map for frame {frame_idx}, using blank frame")
-                    # Create a blank frame
-                    frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
-                else:
-                    # Convert PIL image to numpy array
-                    map_array = np.array(map_image)
-
-                    # Convert from RGB to BGR (OpenCV uses BGR)
-                    frame = cv2.cvtColor(map_array, cv2.COLOR_RGB2BGR)
-
-                # Add timestamp text
-                timestamp_str = frame_timestamp.strftime("%Y-%m-%d %H:%M:%S")
-                cv2.putText(
-                    frame, timestamp_str, (10, self.height - 20),
-                    cv2.FONT_HERSHEY_SIMPLEX, self.timestamp_font_scale, self.timestamp_color, 2
-                )
-
-                # Write frame to video
-                video_writer.write(frame)
-
-                # Log progress
-                if frame_idx % (self.fps * 5) == 0:  # Log every 5 seconds of video
-                    logger.info(f"Generated {frame_idx}/{total_frames} frames ({frame_idx/total_frames:.1%})")
-
+            self._write_video_frames(video_writer, points_with_time, duration_seconds, start_time, total_track_seconds)
             logger.info(f"Video generation complete: {self.output_path}")
             return self.output_path
 
