@@ -21,7 +21,7 @@ class VideoGenerator:
     def __init__(self, output_path: str, fps: int = 30, resolution: Tuple[int, int] = (1280, 720),
                  zoom_level: int = 15, marker_color: Tuple[int, int, int] = (255, 0, 0),
                  marker_size: int = 10, timestamp_color: Tuple[int, int, int] = (0, 0, 0),
-                 timestamp_font_scale: float = 0.7):
+                 timestamp_font_scale: float = 0.7, title_text: str = None, title_align: str = "left"):
         """Initialize the video generator.
 
         Args:
@@ -33,6 +33,8 @@ class VideoGenerator:
             marker_size: Size of the position marker in pixels
             timestamp_color: RGB color tuple for the timestamp text
             timestamp_font_scale: Font scale for the timestamp text
+            title_text: Optional text to display as a title on the video
+            title_align: Alignment of the title text ("left", "center", or "right")
         """
         self.output_path = output_path
         self.fps = fps
@@ -42,6 +44,8 @@ class VideoGenerator:
         self.marker_size = marker_size
         self.timestamp_color = timestamp_color
         self.timestamp_font_scale = timestamp_font_scale
+        self.title_text = title_text
+        self.title_align = title_align
         self.map_renderer = MapRenderer(cache_dir=os.path.join(tempfile.gettempdir(), "gpxmapper_tiles"))
 
     def _interpolate_position(self, track_points: List[GPXTrackPoint],
@@ -132,12 +136,52 @@ class VideoGenerator:
             cv2.FONT_HERSHEY_SIMPLEX, self.timestamp_font_scale, self.timestamp_color, 2
         )
 
+        # Add title text if provided
+        if self.title_text:
+            self._add_title_to_frame(frame)
+
         return frame
+
+    def _add_title_to_frame(self, frame: np.ndarray) -> None:
+        """Add title text to the frame if provided.
+
+        Args:
+            frame: The frame to add the title to
+        """
+        # Calculate position based on alignment
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = self.timestamp_font_scale
+        thickness = 2
+
+        # Get text size to calculate position
+        (text_width, text_height), _ = cv2.getTextSize(
+            self.title_text, font, font_scale, thickness
+        )
+
+        # Calculate x position based on alignment
+        margin = 10
+        if self.title_align == "left":
+            x_pos = margin
+        elif self.title_align == "center":
+            x_pos = (self.width - text_width) // 2
+        elif self.title_align == "right":
+            x_pos = self.width - text_width - margin
+        else:  # Default to left if invalid alignment
+            x_pos = margin
+
+        # Y position (top of frame with margin)
+        y_pos = margin + text_height
+
+        # Draw the title
+        cv2.putText(
+            frame, self.title_text, (x_pos, y_pos),
+            font, font_scale, self.timestamp_color, thickness
+        )
 
     def _write_video_frames(self, video_writer: cv2.VideoWriter, points_with_time: List[GPXTrackPoint],
                             duration_seconds: int, start_time: datetime, total_track_seconds: float) -> None:
         """Write frames to video file.
-        
+
         Args:
             video_writer: OpenCV VideoWriter object
             points_with_time: List of track points with time data

@@ -51,15 +51,15 @@ def generate(
         help="Frames per second for the output video"
     ),
     width: int = typer.Option(
-        1280,
+        320,
         "--width", "-w",
-        min=320,
+        min=128,
         help="Width of the output video in pixels"
     ),
     height: int = typer.Option(
-        720,
+        320,
         "--height", "-h",
-        min=240,
+        min=128,
         help="Height of the output video in pixels"
     ),
     zoom: int = typer.Option(
@@ -92,6 +92,16 @@ def generate(
         max=5.0,
         help="Font scale for the timestamp text"
     ),
+    title_text: Optional[str] = typer.Option(
+        None,
+        "--title",
+        help="Optional text to display as a title on the video"
+    ),
+    title_align: str = typer.Option(
+        "left",
+        "--title-align",
+        help="Alignment of the title text (left, center, right)"
+    ),
 ):
     """Generate a video from a GPX track file.
 
@@ -118,6 +128,11 @@ def generate(
         except Exception as e:
             logger.error(f"Invalid timestamp color format: {e}")
             raise typer.BadParameter("Timestamp color must be in format 'R,G,B' with values 0-255")
+
+        # Validate title alignment
+        if title_align not in ["left", "center", "right"]:
+            logger.error(f"Invalid title alignment: {title_align}")
+            raise typer.BadParameter("Title alignment must be one of: left, center, right")
 
         # Set default output file if not provided
         if output_file is None:
@@ -157,7 +172,9 @@ def generate(
             marker_color=marker_color_tuple,
             marker_size=marker_size,
             timestamp_color=timestamp_color_tuple,
-            timestamp_font_scale=timestamp_font_scale
+            timestamp_font_scale=timestamp_font_scale,
+            title_text=title_text,
+            title_align=title_align
         )
 
         output_path = video_generator.generate_video(track_points, duration)
