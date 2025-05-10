@@ -245,7 +245,7 @@ class VideoGenerator:
         self.zoom_level = zoom_level
         self.marker_color = marker_color
         self.marker_size = marker_size
-        self.map_renderer = MapRenderer(cache_dir=os.path.join(tempfile.gettempdir(), "gpxmapper_tiles"))
+        self.map_renderer = MapRenderer()
 
         # Create a video captioner for text rendering
         self.captioner = VideoCaptioner(

@@ -143,7 +143,6 @@ def generate_video(
 
     output_path = video_generator.generate_video(track_points, video_config.duration)
 
-    logger.info(f"Video generated successfully: {output_path}")
     return output_path
 
 @app.command()

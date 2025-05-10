@@ -4,6 +4,7 @@ import os
 import math
 import io
 import requests
+import platform
 from typing import Tuple, List, Optional, Dict
 from PIL import Image, ImageDraw
 import logging
@@ -38,20 +39,45 @@ class MapTile:
 class MapRenderer:
     """Handles fetching and rendering map tiles."""
 
-    def __init__(self, tile_server: str = DEFAULT_TILE_SERVER, cache_dir: Optional[str] = None):
+    def __init__(self, tile_server: str = DEFAULT_TILE_SERVER, cache_dir: Optional[str] = None, use_cache: bool = True):
         """Initialize the map renderer.
 
         Args:
             tile_server: URL template for the tile server
-            cache_dir: Directory to cache downloaded tiles
+            cache_dir: Directory to cache downloaded tiles. If None, a default directory
+                      based on the operating system will be used.
+            use_cache: Whether to use tile caching. Default is True.
         """
         self.tile_server = tile_server
-        self.cache_dir = cache_dir
         self.composite_map = None
         self.composite_map_info = None
+        self.use_cache = use_cache
 
-        if cache_dir:
-            os.makedirs(cache_dir, exist_ok=True)
+        # Set default cache directory based on OS if not provided
+        if cache_dir is None:
+            logger.info("Using OS dependent cache dir")
+            system = platform.system()
+            if system == "Windows":
+                # Windows default: %LOCALAPPDATA%\gpxmapper\cache
+                appdata = os.environ.get("LOCALAPPDATA")
+                if appdata:
+                    cache_dir = os.path.join(appdata, "gpxmapper", "cache")
+                else:
+                    # Fallback if LOCALAPPDATA is not available
+                    cache_dir = os.path.join(os.path.expanduser("~"), "AppData", "Local", "gpxmapper", "cache")
+            elif system == "Linux":
+                # Linux default: ~/.cache/gpxmapper
+                cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "gpxmapper")
+            else:
+                # Default for other OS
+                cache_dir = os.path.join(os.path.expanduser("~"), ".gpxmapper", "cache")
+
+        self.cache_dir = cache_dir
+        logger.info(f"Using cache dir: {self.cache_dir}")
+
+        # Create cache directory if it doesn't exist
+        if self.cache_dir:
+            os.makedirs(self.cache_dir, exist_ok=True)
 
     @staticmethod
     def deg2num(lat_deg: float, lon_deg: float, zoom: int) -> Tuple[int, int]:
@@ -98,9 +124,9 @@ class MapRenderer:
             zoom: Zoom level
 
         Returns:
-            Path to the cached tile or None if not cached
+            Path to the cached tile or None if not cached or caching is disabled
         """
-        if not self.cache_dir:
+        if not self.use_cache or not self.cache_dir:
             return None
 
         tile_path = os.path.join(self.cache_dir, f"{zoom}_{x}_{y}.png")
@@ -120,17 +146,18 @@ class MapRenderer:
         Returns:
             MapTile object or None if fetching failed
         """
-        # Check cache first
-        tile_path = self.get_tile_path(x, y, zoom)
-        if tile_path:
-            try:
-                image = Image.open(tile_path)
-                # Convert to RGB mode to ensure full color support
-                if image.mode != 'RGB':
-                    image = image.convert('RGB')
-                return MapTile(x, y, zoom, image)
-            except Exception as e:
-                logger.warning(f"Failed to load cached tile: {e}")
+        # Check cache first if caching is enabled
+        if self.use_cache:
+            tile_path = self.get_tile_path(x, y, zoom)
+            if tile_path:
+                try:
+                    image = Image.open(tile_path)
+                    # Convert to RGB mode to ensure full color support
+                    if image.mode != 'RGB':
+                        image = image.convert('RGB')
+                    return MapTile(x, y, zoom, image)
+                except Exception as e:
+                    logger.warning(f"Failed to load cached tile: {e}")
 
         # Fetch from server
         url = self.tile_server.replace("{x}", str(x)).replace("{y}", str(y)).replace("{z}", str(zoom))
@@ -145,8 +172,9 @@ class MapRenderer:
             if image.mode != 'RGB':
                 image = image.convert('RGB')
 
-            # Cache the tile if cache_dir is set
-            if self.cache_dir:
+            # Cache the tile if caching is enabled and cache_dir is set
+            if self.use_cache and self.cache_dir:
+                logger.info(f"Caching tile {x},{y} at zoom {zoom}")
                 tile_path = os.path.join(self.cache_dir, f"{zoom}_{x}_{y}.png")
                 image.save(tile_path)
 
