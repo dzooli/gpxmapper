@@ -13,6 +13,8 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 - Add custom title text to videos
 - Include timed captions from CSV files
 - Customize text alignment and font scale
+- Cache map tiles for faster rendering
+- Clear cache to free up disk space
 
 ## Installation
 
@@ -151,6 +153,10 @@ gpxmapper.exe info path\to\your\file.gpx
 
 - `gpx_file`: Path to the GPX file (required)
 
+### `clear_cache` command
+
+Clears the map tiles cache directory to free up disk space. The cache directory is automatically determined based on the operating system.
+
 ## Examples
 
 ### Basic usage
@@ -234,6 +240,20 @@ gpxmapper generate my_run.gpx --captions captions.csv
 For Windows executable:
 ```cmd
 gpxmapper.exe generate my_run.gpx --captions captions.csv
+```
+
+### Clear the map tiles cache
+
+To free up disk space by removing cached map tiles:
+
+For Python installation:
+```bash
+gpxmapper clear_cache
+```
+
+For Windows executable:
+```cmd
+gpxmapper.exe clear_cache
 ```
 
 ## License
