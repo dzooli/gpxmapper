@@ -10,6 +10,9 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 - Show position marker on the map
 - Display timestamp overlay
 - Match GPX timeline to video duration
+- Add custom title text to videos
+- Include timed captions from CSV files
+- Customize text alignment and font scale
 
 ## Installation
 
@@ -134,13 +137,15 @@ gpxmapper.exe info path\to\your\file.gpx
 - `--output`, `-o`: Path to the output video file (default: input filename with .mp4 extension)
 - `--duration`, `-d`: Duration of the output video in seconds (default: 60)
 - `--fps`, `-f`: Frames per second for the output video (default: 30)
-- `--width`, `-w`: Width of the output video in pixels (default: 1280)
-- `--height`, `-h`: Height of the output video in pixels (default: 720)
+- `--width`, `-w`: Width of the output video in pixels (default: 320)
+- `--height`, `-h`: Height of the output video in pixels (default: 320)
 - `--zoom`, `-z`: Zoom level for the map (1-19, higher is more detailed) (default: 15)
 - `--marker-size`, `-m`: Size of the position marker in pixels (default: 10)
 - `--marker-color`, `-c`: Color of the position marker as R,G,B (default: 255,0,0)
-- `--timestamp-color`, `-tc`: Color of the timestamp text as R,G,B (default: 0,0,0)
-- `--timestamp-font-scale`, `-ts`: Font scale for the timestamp text (default: 0.7)
+- `--font-scale`, `-fs`: Font scale for all text (timestamp, title, captions) (default: 0.7)
+- `--title`: Optional text to display as a title on the video
+- `--text-align`, `-ta`: Alignment of all text (title, captions) (left, center, right) (default: left)
+- `--captions`: Path to a CSV file containing captions with timestamps in HH:MM:SS format (relative to the start of the video)
 
 ### `info` command
 
@@ -185,16 +190,50 @@ For Windows executable:
 gpxmapper.exe generate my_run.gpx --marker-color 0,0,255 --marker-size 15
 ```
 
-### Customize the timestamp appearance
+### Customize the text appearance
 
 For Python installation:
 ```bash
-gpxmapper generate my_run.gpx --timestamp-color 255,255,255 --timestamp-font-scale 1.0
+gpxmapper generate my_run.gpx --font-scale 1.0 --text-align center
 ```
 
 For Windows executable:
 ```cmd
-gpxmapper.exe generate my_run.gpx --timestamp-color 255,255,255 --timestamp-font-scale 1.0
+gpxmapper.exe generate my_run.gpx --font-scale 1.0 --text-align center
+```
+
+### Add a title to the video
+
+For Python installation:
+```bash
+gpxmapper generate my_run.gpx --title "My Morning Run" --text-align center
+```
+
+For Windows executable:
+```cmd
+gpxmapper.exe generate my_run.gpx --title "My Morning Run" --text-align center
+```
+
+### Add captions to the video
+
+First, create a CSV file with your captions (e.g., `captions.csv`):
+```
+TIME,CAPTION
+00:00:01,Starting the journey
+00:00:30,Halfway point
+00:01:00,Finishing up
+```
+
+Then, use the `--captions` option:
+
+For Python installation:
+```bash
+gpxmapper generate my_run.gpx --captions captions.csv
+```
+
+For Windows executable:
+```cmd
+gpxmapper.exe generate my_run.gpx --captions captions.csv
 ```
 
 ## License

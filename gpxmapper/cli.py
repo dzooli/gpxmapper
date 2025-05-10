@@ -4,11 +4,76 @@ import os
 import sys
 import logging
 import typer
-from typing import Optional
+from typing import Optional, Tuple
 from pathlib import Path
+from dataclasses import dataclass
 
 from .gpx_parser import GPXParser
 from .video_generator import VideoGenerator
+
+@dataclass
+class TextConfig:
+    """Configuration for text rendering in the video."""
+    font_scale: float
+    title_text: Optional[str] = None
+    text_align: str = "left"
+    timestamp_color: Tuple[int, int, int] = (0, 0, 0)
+
+@dataclass
+class VideoConfig:
+    """Configuration for video generation."""
+    fps: int
+    width: int
+    height: int
+    duration: int
+
+@dataclass
+class MapConfig:
+    """Configuration for map rendering."""
+    zoom: int
+    marker_size: int
+    marker_color: Tuple[int, int, int]
+
+def create_text_config(
+    font_scale: float,
+    title_text: Optional[str] = None,
+    text_align: str = "left",
+    timestamp_color: str = "0,0,0"
+) -> TextConfig:
+    """Create a TextConfig object from the given parameters.
+
+    Args:
+        font_scale: Font scale for all text (timestamp, title, captions)
+        title_text: Optional text to display as a title on the video
+        text_align: Alignment of all text (title, captions) (left, center, right)
+        timestamp_color: Color of the timestamp text as R,G,B (e.g., '0,0,0' for black)
+
+    Returns:
+        TextConfig object
+    """
+    # Parse timestamp color if provided
+    timestamp_color_tuple = (0, 0, 0)  # Default black
+    if timestamp_color:
+        try:
+            tr, tg, tb = map(int, timestamp_color.split(","))
+            if not all(0 <= c <= 255 for c in (tr, tg, tb)):
+                raise ValueError("Color values must be between 0 and 255")
+            timestamp_color_tuple = (tr, tg, tb)
+        except Exception as e:
+            logger.error(f"Invalid timestamp color format: {e}")
+            raise typer.BadParameter("Timestamp color must be in format 'R,G,B' with values 0-255")
+
+    # Validate text alignment
+    if text_align not in ["left", "center", "right"]:
+        logger.error(f"Invalid text alignment: {text_align}")
+        raise typer.BadParameter("Text alignment must be one of: left, center, right")
+
+    return TextConfig(
+        font_scale=font_scale,
+        title_text=title_text,
+        text_align=text_align,
+        timestamp_color=timestamp_color_tuple
+    )
 
 # Set up logging
 logging.basicConfig(
@@ -21,6 +86,65 @@ logger = logging.getLogger(__name__)
 
 # Create typer app
 app = typer.Typer(help="GPX to video mapper - creates videos from GPX tracks")
+
+def generate_video(
+    gpx_file: Path,
+    output_file: Path,
+    video_config: VideoConfig,
+    map_config: MapConfig,
+    text_config: TextConfig,
+    captions: Optional[Path] = None
+) -> str:
+    """Generate a video from a GPX track file.
+
+    Args:
+        gpx_file: Path to the input GPX file
+        output_file: Path to the output video file
+        video_config: Configuration for video generation
+        map_config: Configuration for map rendering
+        text_config: Configuration for text rendering in the video
+        captions: Optional path to a CSV file containing captions with timestamps
+
+    Returns:
+        Path to the generated video file
+    """
+    # Parse GPX file
+    logger.info(f"Parsing GPX file: {gpx_file}")
+    parser = GPXParser(str(gpx_file))
+    track_points = parser.parse()
+
+    if not track_points:
+        logger.error("No track points found in the GPX file")
+        raise typer.Abort()
+
+    # Check if track points have time data
+    points_with_time = [p for p in track_points if p.time is not None]
+    if not points_with_time:
+        logger.error("GPX file doesn't contain time data, which is required for video generation")
+        raise typer.Abort()
+
+    # Get time bounds
+    start_time, end_time = parser.get_time_bounds()
+    logger.info(f"Track time range: {start_time} to {end_time}")
+
+    # Generate video
+    logger.info(f"Generating video: {output_file}")
+
+    video_generator = VideoGenerator(
+        output_path=str(output_file),
+        fps=video_config.fps,
+        resolution=(video_config.width, video_config.height),
+        zoom_level=map_config.zoom,
+        marker_color=map_config.marker_color,
+        marker_size=map_config.marker_size,
+        text_config=text_config,
+        captions_file=str(captions) if captions else None
+    )
+
+    output_path = video_generator.generate_video(track_points, video_config.duration)
+
+    logger.info(f"Video generated successfully: {output_path}")
+    return output_path
 
 @app.command()
 def generate(
@@ -80,27 +204,32 @@ def generate(
         "--marker-color", "-c",
         help="Color of the position marker as R,G,B (e.g., '255,0,0' for red)"
     ),
-    timestamp_color: str = typer.Option(
-        "0,0,0",
-        "--timestamp-color", "-tc",
-        help="Color of the timestamp text as R,G,B (e.g., '0,0,0' for black)"
-    ),
-    timestamp_font_scale: float = typer.Option(
+    # Text rendering options
+    font_scale: float = typer.Option(
         0.7,
-        "--timestamp-font-scale", "-ts",
+        "--font-scale", "-fs",
         min=0.1,
         max=5.0,
-        help="Font scale for the timestamp text"
+        help="Font scale for all text (timestamp, title, captions)"
     ),
     title_text: Optional[str] = typer.Option(
         None,
         "--title",
         help="Optional text to display as a title on the video"
     ),
-    title_align: str = typer.Option(
+    text_align: str = typer.Option(
         "left",
-        "--title-align",
-        help="Alignment of the title text (left, center, right)"
+        "--text-align", "-ta",
+        help="Alignment of all text (title, captions) (left, center, right)"
+    ),
+    captions: Optional[Path] = typer.Option(
+        None,
+        "--captions",
+        help="Path to a CSV file containing captions with timestamps in HH:MM:SS format (relative to the start of the video)",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True
     ),
 ):
     """Generate a video from a GPX track file.
@@ -119,21 +248,6 @@ def generate(
             logger.error(f"Invalid marker color format: {e}")
             raise typer.BadParameter("Marker color must be in format 'R,G,B' with values 0-255")
 
-        # Parse timestamp color
-        try:
-            tr, tg, tb = map(int, timestamp_color.split(","))
-            if not all(0 <= c <= 255 for c in (tr, tg, tb)):
-                raise ValueError("Color values must be between 0 and 255")
-            timestamp_color_tuple = (tr, tg, tb)
-        except Exception as e:
-            logger.error(f"Invalid timestamp color format: {e}")
-            raise typer.BadParameter("Timestamp color must be in format 'R,G,B' with values 0-255")
-
-        # Validate title alignment
-        if title_align not in ["left", "center", "right"]:
-            logger.error(f"Invalid title alignment: {title_align}")
-            raise typer.BadParameter("Title alignment must be one of: left, center, right")
-
         # Set default output file if not provided
         if output_file is None:
             output_file = gpx_file.with_suffix(".mp4")
@@ -143,41 +257,35 @@ def generate(
         if not output_dir.exists():
             output_dir.mkdir(parents=True)
 
-        # Parse GPX file
-        logger.info(f"Parsing GPX file: {gpx_file}")
-        parser = GPXParser(str(gpx_file))
-        track_points = parser.parse()
-
-        if not track_points:
-            logger.error("No track points found in the GPX file")
-            raise typer.Abort()
-
-        # Check if track points have time data
-        points_with_time = [p for p in track_points if p.time is not None]
-        if not points_with_time:
-            logger.error("GPX file doesn't contain time data, which is required for video generation")
-            raise typer.Abort()
-
-        # Get time bounds
-        start_time, end_time = parser.get_time_bounds()
-        logger.info(f"Track time range: {start_time} to {end_time}")
-
-        # Generate video
-        logger.info(f"Generating video: {output_file}")
-        video_generator = VideoGenerator(
-            output_path=str(output_file),
-            fps=fps,
-            resolution=(width, height),
-            zoom_level=zoom,
-            marker_color=marker_color_tuple,
-            marker_size=marker_size,
-            timestamp_color=timestamp_color_tuple,
-            timestamp_font_scale=timestamp_font_scale,
+        # Create configurations
+        text_config = create_text_config(
+            font_scale=font_scale,
             title_text=title_text,
-            title_align=title_align
+            text_align=text_align
         )
 
-        output_path = video_generator.generate_video(track_points, duration)
+        video_config = VideoConfig(
+            fps=fps,
+            width=width,
+            height=height,
+            duration=duration
+        )
+
+        map_config = MapConfig(
+            zoom=zoom,
+            marker_size=marker_size,
+            marker_color=marker_color_tuple
+        )
+
+        # Generate video
+        output_path = generate_video(
+            gpx_file=gpx_file,
+            output_file=output_file,
+            video_config=video_config,
+            map_config=map_config,
+            text_config=text_config,
+            captions=captions
+        )
 
         logger.info(f"Video generated successfully: {output_path}")
 
