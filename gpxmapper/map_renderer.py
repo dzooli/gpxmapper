@@ -1,4 +1,10 @@
-"""Map rendering module for fetching and rendering map tiles."""
+"""Map rendering module for fetching and rendering map tiles.
+
+This module has been optimized for performance with the following improvements:
+1. Parallel tile fetching using ThreadPoolExecutor
+2. Caching of coordinate conversion calculations
+3. Efficient composite map creation
+"""
 
 import os
 import math
@@ -9,6 +15,8 @@ from typing import Tuple, List, Optional, Dict
 from PIL import Image, ImageDraw
 import logging
 from pathlib import Path
+import concurrent.futures
+from functools import partial
 
 logger = logging.getLogger(__name__)
 
@@ -79,8 +87,11 @@ class MapRenderer:
         if self.cache_dir:
             os.makedirs(self.cache_dir, exist_ok=True)
 
-    @staticmethod
-    def deg2num(lat_deg: float, lon_deg: float, zoom: int) -> Tuple[int, int]:
+    # Cache for 2^zoom values to avoid repeated calculations
+    _zoom_cache = {}
+
+    @classmethod
+    def deg2num(cls, lat_deg: float, lon_deg: float, zoom: int) -> Tuple[int, int]:
         """Convert latitude and longitude to tile coordinates.
 
         Args:
@@ -91,14 +102,18 @@ class MapRenderer:
         Returns:
             Tuple of (x, y) tile coordinates
         """
+        # Get or calculate 2^zoom
+        if zoom not in cls._zoom_cache:
+            cls._zoom_cache[zoom] = 2.0 ** zoom
+        n = cls._zoom_cache[zoom]
+
         lat_rad = math.radians(lat_deg)
-        n = 2.0 ** zoom
         x = int((lon_deg + 180.0) / 360.0 * n)
         y = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
         return x, y
 
-    @staticmethod
-    def num2deg(xtile: int, ytile: int, zoom: int) -> Tuple[float, float]:
+    @classmethod
+    def num2deg(cls, xtile: int, ytile: int, zoom: int) -> Tuple[float, float]:
         """Convert tile coordinates to latitude and longitude.
 
         Args:
@@ -109,7 +124,11 @@ class MapRenderer:
         Returns:
             Tuple of (latitude, longitude) in degrees
         """
-        n = 2.0 ** zoom
+        # Get or calculate 2^zoom
+        if zoom not in cls._zoom_cache:
+            cls._zoom_cache[zoom] = 2.0 ** zoom
+        n = cls._zoom_cache[zoom]
+
         lon_deg = xtile / n * 360.0 - 180.0
         lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
         lat_deg = math.degrees(lat_rad)
@@ -201,14 +220,35 @@ class MapRenderer:
         min_x, max_y = self.deg2num(min_lat, min_lon, zoom)
         max_x, min_y = self.deg2num(max_lat, max_lon, zoom)
 
-        tiles = []
+        # Create a list of all tile coordinates to fetch
+        tile_coords = []
         for x in range(min_x, max_x + 1):
             for y in range(min_y, max_y + 1):
-                tile = self.fetch_tile(x, y, zoom)
-                if tile:
-                    tiles.append(tile)
+                tile_coords.append((x, y, zoom))
+
+        # Fetch tiles in parallel
+        tiles = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            # Create a partial function with self as the first argument
+            fetch_tile_partial = partial(self._fetch_tile_wrapper)
+            # Map the function to all tile coordinates
+            results = list(executor.map(fetch_tile_partial, tile_coords))
+            # Filter out None results
+            tiles = [tile for tile in results if tile]
 
         return tiles
+
+    def _fetch_tile_wrapper(self, coords):
+        """Wrapper for fetch_tile to use with concurrent.futures.
+
+        Args:
+            coords: Tuple of (x, y, zoom)
+
+        Returns:
+            MapTile object or None if fetching failed
+        """
+        x, y, zoom = coords
+        return self.fetch_tile(x, y, zoom)
 
     def create_composite_map(self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int) -> Image.Image:
         """Create a large composite image from all tiles in the bounding box.
@@ -234,10 +274,29 @@ class MapRenderer:
         # Create a blank image
         composite = Image.new('RGB', (width, height))
 
-        # Fetch and place all tiles
+        # Create a list of all tile coordinates to fetch
+        tile_coords = []
         for x in range(min_x, max_x + 1):
             for y in range(min_y, max_y + 1):
-                tile = self.fetch_tile(x, y, zoom)
+                tile_coords.append((x, y, zoom))
+
+        # Fetch tiles in parallel
+        tile_dict = {}  # Dictionary to store tiles by coordinates
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            # Create a partial function with self as the first argument
+            fetch_tile_partial = partial(self._fetch_tile_wrapper)
+            # Map the function to all tile coordinates
+            results = list(executor.map(fetch_tile_partial, tile_coords))
+
+            # Store tiles in a dictionary for easy lookup
+            for tile in results:
+                if tile:
+                    tile_dict[(tile.x, tile.y)] = tile
+
+        # Place all tiles on the composite image
+        for x in range(min_x, max_x + 1):
+            for y in range(min_y, max_y + 1):
+                tile = tile_dict.get((x, y))
                 if tile and tile.image:
                     # Calculate position in the composite image
                     pos_x = (x - min_x) * 256

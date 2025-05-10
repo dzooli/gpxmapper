@@ -1,4 +1,11 @@
-"""Video generation module for creating videos from GPX tracks."""
+"""Video generation module for creating videos from GPX tracks.
+
+This module has been optimized for performance with the following improvements:
+1. Parallel frame generation using ThreadPoolExecutor
+2. Efficient position interpolation with binary search
+3. Caching of interpolated positions
+4. Batch processing of frames for better memory management
+"""
 
 import csv
 import logging
@@ -7,6 +14,8 @@ import tempfile
 from datetime import datetime, timedelta
 from pprint import pprint
 from typing import Dict, List, Optional, Tuple
+import concurrent.futures
+from functools import partial
 
 import cv2
 import numpy as np
@@ -258,19 +267,62 @@ class VideoGenerator:
             captions_file=captions_file
         )
 
-    def _interpolate_position(self, track_points: List[GPXTrackPoint],
-                              timestamp: datetime) -> Tuple[float, float]:
-        """Interpolate position at a given timestamp between track points.
+    def __init__(self, output_path: str, fps: int = 30, resolution: Tuple[int, int] = (1280, 720),
+                 zoom_level: int = 15, marker_color: Tuple[int, int, int] = (255, 0, 0),
+                 marker_size: int = 10, text_config=None, captions_file: str = None):
+        """Initialize the video generator.
+
+        Args:
+            output_path: Path to the output video file
+            fps: Frames per second
+            resolution: Tuple of (width, height) in pixels
+            zoom_level: Zoom level for the map (1-19)
+            marker_color: RGB color tuple for the position marker
+            marker_size: Size of the position marker in pixels
+            text_config: Configuration for text overlays
+            captions_file: Path to a CSV file with captions
+        """
+        self.output_path = output_path
+        self.fps = fps
+        self.width, self.height = resolution
+        self.zoom_level = zoom_level
+        self.marker_color = marker_color
+        self.marker_size = marker_size
+
+        # Initialize map renderer
+        self.map_renderer = MapRenderer()
+
+        # Initialize text config with defaults if not provided
+        if text_config is None:
+            text_config = TextConfig()
+
+        # Initialize captioner
+        self.captioner = VideoCaptioner(
+            width=self.width,
+            height=self.height,
+            timestamp_color=text_config.timestamp_color,
+            font_scale=text_config.font_scale,
+            title_text=text_config.title_text,
+            text_align=text_config.text_align,
+            captions_file=captions_file
+        )
+
+        # Cache for interpolated positions
+        self._position_cache = {}
+        # Last found index for binary search optimization
+        self._last_index = 0
+
+    def _prepare_track_points(self, track_points: List[GPXTrackPoint]) -> List[GPXTrackPoint]:
+        """Prepare track points for interpolation by filtering and sorting.
 
         Args:
             track_points: List of GPXTrackPoint objects
-            timestamp: Timestamp to interpolate position for
 
         Returns:
-            Tuple of (latitude, longitude)
+            Filtered and sorted list of track points with time data
 
         Raises:
-            ValueError: If track points don't have time data or timestamp is out of range
+            ValueError: If track points don't have time data
         """
         # Filter points with time data
         points_with_time = [p for p in track_points if p.time is not None]
@@ -280,33 +332,85 @@ class VideoGenerator:
         # Sort points by time
         points_with_time.sort(key=lambda p: p.time)
 
+        return points_with_time
+
+    def _interpolate_position(self, points_with_time: List[GPXTrackPoint],
+                              timestamp: datetime) -> Tuple[float, float]:
+        """Interpolate position at a given timestamp between track points.
+
+        Args:
+            points_with_time: List of GPXTrackPoint objects with time data, already filtered and sorted
+            timestamp: Timestamp to interpolate position for
+
+        Returns:
+            Tuple of (latitude, longitude)
+
+        Raises:
+            ValueError: If timestamp is out of range
+        """
+        # Check if position is already in cache
+        cache_key = timestamp.isoformat()
+        if cache_key in self._position_cache:
+            return self._position_cache[cache_key]
+
         # Check if timestamp is within range
         if timestamp < points_with_time[0].time or timestamp > points_with_time[-1].time:
             raise ValueError(f"Timestamp {timestamp} is outside the track time range")
 
-        # Find the two points to interpolate between
-        for i in range(len(points_with_time) - 1):
-            p1 = points_with_time[i]
-            p2 = points_with_time[i + 1]
+        # Use binary search to find the two points to interpolate between
+        # Start from last found index as an optimization for sequential access
+        left = self._last_index
+        right = len(points_with_time) - 1
 
-            if p1.time <= timestamp <= p2.time:
-                # Calculate interpolation factor
-                total_seconds = (p2.time - p1.time).total_seconds()
-                if total_seconds == 0:
-                    # Same timestamp, no need to interpolate
-                    return p1.latitude, p1.longitude
+        # If timestamp is before the last found point, search from beginning
+        if timestamp < points_with_time[left].time:
+            left = 0
 
-                elapsed_seconds = (timestamp - p1.time).total_seconds()
-                factor = elapsed_seconds / total_seconds
+        # Binary search
+        while left < right:
+            mid = (left + right) // 2
+            if points_with_time[mid].time < timestamp:
+                left = mid + 1
+            else:
+                right = mid
 
-                # Interpolate latitude and longitude
-                lat = p1.latitude + factor * (p2.latitude - p1.latitude)
-                lon = p1.longitude + factor * (p2.longitude - p1.longitude)
+        # Adjust index if needed
+        if left > 0 and points_with_time[left].time > timestamp:
+            left -= 1
 
-                return lat, lon
+        # Save index for next search
+        self._last_index = left
 
-        # This should not happen if the timestamp check above is correct
-        raise ValueError(f"Failed to interpolate position for timestamp {timestamp}")
+        # Get the two points to interpolate between
+        p1 = points_with_time[left]
+
+        # If we're at the last point or timestamp matches exactly, return that point
+        if left == len(points_with_time) - 1 or p1.time == timestamp:
+            result = (p1.latitude, p1.longitude)
+            self._position_cache[cache_key] = result
+            return result
+
+        p2 = points_with_time[left + 1]
+
+        # Calculate interpolation factor
+        total_seconds = (p2.time - p1.time).total_seconds()
+        if total_seconds == 0:
+            # Same timestamp, no need to interpolate
+            result = (p1.latitude, p1.longitude)
+            self._position_cache[cache_key] = result
+            return result
+
+        elapsed_seconds = (timestamp - p1.time).total_seconds()
+        factor = elapsed_seconds / total_seconds
+
+        # Interpolate latitude and longitude
+        lat = p1.latitude + factor * (p2.latitude - p1.latitude)
+        lon = p1.longitude + factor * (p2.longitude - p1.longitude)
+
+        # Cache and return result
+        result = (lat, lon)
+        self._position_cache[cache_key] = result
+        return result
 
     def _generate_frame(self, frame_idx: int, frame_timestamp: datetime, frame_seconds: float,
                         points_with_time: List[GPXTrackPoint]) -> np.ndarray:
@@ -348,6 +452,19 @@ class VideoGenerator:
         return frame
 
 
+    def _generate_frame_data(self, frame_info):
+        """Generate frame data for a single frame.
+
+        Args:
+            frame_info: Tuple of (frame_idx, frame_timestamp, frame_seconds, points_with_time)
+
+        Returns:
+            Tuple of (frame_idx, frame) where frame is a numpy array in BGR format
+        """
+        frame_idx, frame_timestamp, frame_seconds, points_with_time = frame_info
+        frame = self._generate_frame(frame_idx, frame_timestamp, frame_seconds, points_with_time)
+        return frame_idx, frame
+
     def _write_video_frames(self, video_writer: cv2.VideoWriter, points_with_time: List[GPXTrackPoint],
                             duration_seconds: int, start_time: datetime, total_track_seconds: float) -> None:
         """Write frames to video file.
@@ -365,6 +482,8 @@ class VideoGenerator:
         # Calculate total number of frames
         total_frames = duration_seconds * self.fps
 
+        # Prepare frame information for all frames
+        frame_infos = []
         for frame_idx in range(total_frames):
             # Calculate seconds elapsed since the start of the video
             frame_seconds = frame_idx / self.fps
@@ -373,12 +492,35 @@ class VideoGenerator:
             track_seconds = progress * total_track_seconds
             frame_timestamp = start_time + timedelta(seconds=track_seconds)
 
-            frame = self._generate_frame(frame_idx, frame_timestamp, frame_seconds, points_with_time)
-            video_writer.write(frame)
+            frame_infos.append((frame_idx, frame_timestamp, frame_seconds, points_with_time))
+
+        # Generate frames in parallel
+        frames_dict = {}  # Dictionary to store frames by index
+
+        # Determine the number of workers based on CPU cores (use at most 4 workers)
+        max_workers = min(4, os.cpu_count() or 4)
+
+        # Use a smaller batch size for better progress reporting
+        batch_size = self.fps * 2  # Process 2 seconds of video at a time
+
+        for batch_start in range(0, total_frames, batch_size):
+            batch_end = min(batch_start + batch_size, total_frames)
+            batch_infos = frame_infos[batch_start:batch_end]
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # Generate frames in parallel
+                results = list(executor.map(self._generate_frame_data, batch_infos))
+
+                # Store frames in dictionary
+                for frame_idx, frame in results:
+                    frames_dict[frame_idx] = frame
+
+            # Write frames to video in correct order
+            for frame_idx in range(batch_start, batch_end):
+                video_writer.write(frames_dict[frame_idx])
 
             # Log progress
-            if frame_idx % (self.fps * 5) == 0:  # Log every 5 seconds of video
-                logger.info(f"Generated {frame_idx}/{total_frames} frames ({frame_idx / total_frames:.1%})")
+            logger.info(f"Generated {batch_end}/{total_frames} frames ({batch_end / total_frames:.1%})")
 
     def generate_video(self, track_points: List[GPXTrackPoint], duration_seconds: int) -> str:
         """Generate a video from GPX track points.
@@ -393,13 +535,12 @@ class VideoGenerator:
         Raises:
             ValueError: If track points don't have time data or other issues
         """
-        # Filter points with time data
-        points_with_time = [p for p in track_points if p.time is not None]
-        if not points_with_time:
-            raise ValueError("Track points don't have time data")
+        # Prepare track points (filter and sort)
+        points_with_time = self._prepare_track_points(track_points)
 
-        # Sort points by time  
-        points_with_time.sort(key=lambda p: p.time)
+        # Reset position cache and last index for a new video
+        self._position_cache = {}
+        self._last_index = 0
 
         # Get time range
         start_time = points_with_time[0].time
