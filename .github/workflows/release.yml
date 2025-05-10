@@ -1,0 +1,62 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+
+    - name: Build executable
+      run: |
+        python build_exe.py
+
+    - name: Get current date
+      id: date
+      run: echo "date=$(Get-Date -Format "yyyyMMdd")" >> $env:GITHUB_OUTPUT
+      shell: pwsh
+
+    - name: Get short SHA
+      id: sha
+      run: echo "sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
+      shell: pwsh
+
+    - name: Create release zip
+      run: |
+        $releaseDir = "release"
+        New-Item -ItemType Directory -Path $releaseDir -Force
+        Copy-Item "dist\gpxmapper.exe" -Destination "$releaseDir\"
+        Copy-Item "README.md" -Destination "$releaseDir\"
+        Copy-Item "LICENSE" -Destination "$releaseDir\"
+        $zipName = "gpxmapper-${{ steps.sha.outputs.sha }}-${{ steps.date.outputs.date }}.zip"
+        Compress-Archive -Path "$releaseDir\*" -DestinationPath $zipName
+        echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
+      shell: pwsh
+
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ${{ env.ZIP_NAME }}
+        name: Release ${{ steps.sha.outputs.sha }} (${{ steps.date.outputs.date }})
+        tag_name: v${{ steps.date.outputs.date }}-${{ steps.sha.outputs.sha }}
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
