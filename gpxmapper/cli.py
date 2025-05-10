@@ -4,6 +4,7 @@ import os
 import sys
 import logging
 import typer
+from typer.models import Context
 import shutil
 from typing import Optional, Tuple
 from pathlib import Path
@@ -88,6 +89,12 @@ logger = logging.getLogger(__name__)
 
 # Create typer app
 app = typer.Typer(help="GPX to video mapper - creates videos from GPX tracks")
+
+@app.callback(invoke_without_command=True)
+def main(ctx: Context):
+    """GPX to video mapper - creates videos from GPX tracks."""
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
 
 def generate_video(
     gpx_file: Path,
