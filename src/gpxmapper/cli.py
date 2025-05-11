@@ -13,29 +13,7 @@ from dataclasses import dataclass
 from .gpx_parser import GPXParser
 from .video_generator import VideoGenerator
 from .map_renderer import MapRenderer
-
-@dataclass
-class TextConfig:
-    """Configuration for text rendering in the video."""
-    font_scale: float
-    title_text: Optional[str] = None
-    text_align: str = "left"
-    timestamp_color: Tuple[int, int, int] = (0, 0, 0)
-
-@dataclass
-class VideoConfig:
-    """Configuration for video generation."""
-    fps: int
-    width: int
-    height: int
-    duration: int
-
-@dataclass
-class MapConfig:
-    """Configuration for map rendering."""
-    zoom: int
-    marker_size: int
-    marker_color: Tuple[int, int, int]
+from .models import TextConfig, VideoConfig, MapConfig
 
 def create_text_config(
     font_scale: float,

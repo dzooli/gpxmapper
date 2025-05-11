@@ -18,30 +18,12 @@ from pathlib import Path
 import concurrent.futures
 from functools import partial
 
+from .models import MapTile
+
 logger = logging.getLogger(__name__)
 
 # Default tile server URL template
 DEFAULT_TILE_SERVER = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-
-class MapTile:
-    """Represents a single map tile with its coordinates and image data."""
-
-    def __init__(self, x: int, y: int, zoom: int, image: Optional[Image.Image] = None):
-        """Initialize a map tile.
-
-        Args:
-            x: X coordinate of the tile
-            y: Y coordinate of the tile
-            zoom: Zoom level
-            image: Optional PIL Image object of the tile
-        """
-        self.x = x
-        self.y = y
-        self.zoom = zoom
-        self.image = image
-
-    def __repr__(self) -> str:
-        return f"MapTile(x={self.x}, y={self.y}, zoom={self.zoom})"
 
 
 class MapRenderer:

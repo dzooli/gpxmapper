@@ -20,7 +20,7 @@ from functools import partial
 import cv2
 import numpy as np
 
-from .gpx_parser import GPXTrackPoint
+from .models import GPXTrackPoint
 from .map_renderer import MapRenderer
 
 logger = logging.getLogger(__name__)
