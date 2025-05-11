@@ -17,7 +17,8 @@ def create_text_config(
     font_scale: float,
     title_text: Optional[str] = None,
     text_align: str = "left",
-    timestamp_color: str = "0,0,0"
+    timestamp_color: str = "0,0,0",
+    font_file: Optional[str] = None
 ) -> TextConfig:
     """Create a TextConfig object from the given parameters.
 
@@ -26,6 +27,7 @@ def create_text_config(
         title_text: Optional text to display as a title on the video
         text_align: Alignment of all text (title, captions) (left, center, right)
         timestamp_color: Color of the timestamp text as R,G,B (e.g., '0,0,0' for black)
+        font_file: Optional path to a TrueType font file (.ttf) for text rendering
 
     Returns:
         TextConfig object
@@ -51,7 +53,8 @@ def create_text_config(
         font_scale=font_scale,
         title_text=title_text,
         text_align=text_align,
-        timestamp_color=timestamp_color_tuple
+        timestamp_color=timestamp_color_tuple,
+        font_file=font_file
     )
 
 # Set up logging
@@ -215,6 +218,15 @@ def generate(
         dir_okay=False,
         readable=True
     ),
+    font_file: Optional[Path] = typer.Option(
+        None,
+        "--font", "-ff",
+        help="Path to a TrueType font file (.ttf) for text rendering",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True
+    ),
 ):
     """Generate a video from a GPX track file.
 
@@ -234,7 +246,7 @@ def generate(
 
         # Set default output file if not provided
         if output_file is None:
-            output_file = gpx_file.with_suffix(".mp4")
+            output_file = gpx_file.with_suffix(".mp4")  # Using .mp4 extension for H.264 codec
 
         # Create output directory if it doesn't exist
         output_dir = output_file.parent
@@ -245,7 +257,8 @@ def generate(
         text_config = create_text_config(
             font_scale=font_scale,
             title_text=title_text,
-            text_align=text_align
+            text_align=text_align,
+            font_file=str(font_file) if font_file else None
         )
 
         video_config = VideoConfig(

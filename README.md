@@ -153,6 +153,7 @@ gpxmapper.exe info path\to\your\file.gpx
 - `--title`: Optional text to display as a title on the video
 - `--text-align`, `-ta`: Alignment of all text (title, captions) (left, center, right) (default: left)
 - `--captions`: Path to a CSV file containing captions with timestamps in HH:MM:SS format (relative to the start of the video)
+- `--font`, `-ff`: Path to a TrueType font file (.ttf) for text rendering
 
 Note: The timestamp color is fixed to black (0,0,0) in the command-line interface but can be customized when using the library programmatically.
 
@@ -220,7 +221,8 @@ text_config = TextConfig(
     font_scale=1.0,
     title_text="My Hiking Adventure",
     text_align="center",
-    timestamp_color=(255, 255, 255)  # White color for timestamp
+    timestamp_color=(255, 255, 255),  # White color for timestamp
+    font_file="path/to/custom_font.ttf"  # Custom TrueType font
 )
 
 # Generate video
@@ -302,6 +304,18 @@ gpxmapper generate my_run.gpx --title "My Morning Run" --text-align center
 For Windows executable:
 ```cmd
 gpxmapper.exe generate my_run.gpx --title "My Morning Run" --text-align center
+```
+
+### Use a custom font for text rendering
+
+For Python installation:
+```bash
+gpxmapper generate my_run.gpx --font path/to/custom_font.ttf
+```
+
+For Windows executable:
+```cmd
+gpxmapper.exe generate my_run.gpx --font path\to\custom_font.ttf
 ```
 
 ### Add captions to the video
