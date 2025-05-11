@@ -15,6 +15,7 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 - Add custom title text to videos
 - Include timed captions from CSV files
 - Customize text alignment and font scale
+- Customize the font of text overlays (TTF only)
 - Cache map tiles for faster rendering
 - Clear cache to free up disk space
 - Performance optimizations:
@@ -163,7 +164,7 @@ Note: The timestamp color is fixed to black (0,0,0) in the command-line interfac
 
 - `gpx_file`: Path to the GPX file (required)
 
-### `clear_cache` command
+### `clear-cache` command
 
 Clears the map tiles cache directory to free up disk space. The cache directory is automatically determined based on the operating system.
 
@@ -348,12 +349,12 @@ To free up disk space by removing cached map tiles:
 
 For Python installation:
 ```bash
-gpxmapper clear_cache
+gpxmapper clear-cache
 ```
 
 For Windows executable:
 ```cmd
-gpxmapper.exe clear_cache
+gpxmapper.exe clear-cache
 ```
 
 ## License
