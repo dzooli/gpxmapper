@@ -22,8 +22,7 @@ jobs:
       with:
         python-version: '3.12'
         uv-version: 'latest'
-        additional-args: '--all-packages --dev -U'
-        working-directory: '.'
+        extra-args: '--all-packages --dev -U'
 
     - name: Bump version with commitizen
       id: cz
@@ -78,8 +77,7 @@ jobs:
       with:
         python-version: '3.12'
         uv-version: 'latest'
-        additional-args: '--all-packages --dev -U'
-        working-directory: '.'
+        extra-args: '--all-packages --dev -U'
 
     - name: Get version
       id: version
