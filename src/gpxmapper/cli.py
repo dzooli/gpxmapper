@@ -1,17 +1,18 @@
 """Command-line interface for GPX to video mapper."""
 
+import logging
 import os
 import sys
-import logging
-import typer
-from typer.models import Context
-from typing import Optional
 from pathlib import Path
+from typing import Optional
+
+import typer
 
 from .gpx_parser import GPXParser
-from .video_generator import VideoGenerator
 from .map_renderer import MapRenderer
 from .models import TextConfig, VideoConfig, MapConfig
+from .video_generator import VideoGenerator
+
 
 def create_text_config(
     font_scale: float,
@@ -57,6 +58,7 @@ def create_text_config(
         font_file=font_file
     )
 
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
@@ -67,21 +69,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Create typer app
-app = typer.Typer(help="GPX to video mapper - creates videos from GPX tracks")
+app = typer.Typer(invoke_without_command=True, no_args_is_help=True,
+                  help="GPX to video mapper - creates videos from GPX tracks")
 
-@app.callback(invoke_without_command=True)
-def main(ctx: Context):
-    """GPX to video mapper - creates videos from GPX tracks."""
-    if ctx.invoked_subcommand is None:
-        typer.echo(ctx.get_help())
 
 def generate_video(
-    gpx_file: Path,
-    output_file: Path,
-    video_config: VideoConfig,
-    map_config: MapConfig,
-    text_config: TextConfig,
-    captions: Optional[Path] = None
+        gpx_file: Path,
+        output_file: Path,
+        video_config: VideoConfig,
+        map_config: MapConfig,
+        text_config: TextConfig,
+        captions: Optional[Path] = None
 ) -> str:
     """Generate a video from a GPX track file.
 
@@ -132,6 +130,7 @@ def generate_video(
     output_path = video_generator.generate_video(track_points, video_config.duration)
 
     return output_path
+
 
 @app.command()
 def generate(
@@ -227,6 +226,7 @@ def generate(
         dir_okay=False,
         readable=True
     ),
+
 ):
     """Generate a video from a GPX track file.
 
@@ -290,16 +290,17 @@ def generate(
         logger.error(f"Error generating video: {e}")
         raise typer.Abort()
 
+
 @app.command()
 def info(
-    gpx_file: Path = typer.Argument(
-        ..., 
-        exists=True, 
-        file_okay=True, 
-        dir_okay=False, 
-        readable=True,
-        help="Path to the GPX file"
-    )
+        gpx_file: Path = typer.Argument(
+            ...,
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Path to the GPX file"
+        )
 ):
     """Display information about a GPX file."""
     try:
@@ -334,6 +335,7 @@ def info(
     except Exception as e:
         logger.error(f"Error reading GPX file: {e}")
         raise typer.Abort()
+
 
 @app.command()
 def clear_cache():
@@ -375,6 +377,7 @@ def clear_cache():
     except Exception as e:
         logger.error(f"Error clearing cache: {e}")
         raise typer.Abort()
+
 
 if __name__ == "__main__":
     app()
