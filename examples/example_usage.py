@@ -9,9 +9,7 @@ import logging
 from pathlib import Path
 import sys
 
-# Add the parent directory to the path so we can import the gpxmapper module
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+# Import from the installed package
 from gpxmapper.gpx_parser import GPXParser
 from gpxmapper.video_generator import VideoGenerator
 from gpxmapper.cli import TextConfig

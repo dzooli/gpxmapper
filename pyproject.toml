@@ -15,7 +15,7 @@ name = "gpxmapper"
 version = "0.1.0"
 description = "GPX to video mapper - creates videos from GPX tracks"
 authors = [
-    { name = "Developer", email = "dev@example.com" },
+    { name = "Zoltan Fabian", email = "zoltan.dzooli.fabian@gmail.com" },
 ]
 readme = "README.md"
 requires-python = ">=3.12"
@@ -27,9 +27,16 @@ dependencies = [
     "pillow>=10.0.0",
     "numpy>=1.24.0",
 ]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
 
 [project.optional-dependencies]
 dev = [
+    "pyinstaller>=6.0.0",
+    "tomli>=2.2.1",
 ]
 
 [project.scripts]
@@ -50,6 +57,10 @@ options = [
     "--specpath=.",
 ]
 entry_point = "exe_entry_point.py"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["gpxmapper"]
 
 [dependency-groups]
 dev = [
