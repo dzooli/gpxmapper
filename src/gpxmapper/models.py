@@ -10,6 +10,39 @@ from dataclasses import dataclass
 from PIL import Image
 
 
+@dataclass
+class Point:
+    """Represents a 2D point with x and y coordinates."""
+    x: int
+    y: int
+
+
+@dataclass
+class GeoPoint:
+    """Represents a geographic point with latitude and longitude."""
+    lat: float
+    lon: float
+
+
+@dataclass
+class Rectangle:
+    """Represents a rectangle with left, top, right, bottom coordinates."""
+    left: int
+    top: int
+    right: int
+    bottom: int
+
+    @property
+    def width(self) -> int:
+        """Get the width of the rectangle."""
+        return self.right - self.left
+
+    @property
+    def height(self) -> int:
+        """Get the height of the rectangle."""
+        return self.bottom - self.top
+
+
 class GPXTrackPoint:
     """Represents a single point in a GPX track with time and position."""
 

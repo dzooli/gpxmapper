@@ -11,12 +11,11 @@ import csv
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 import concurrent.futures
 
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
 
 from .models import GPXTrackPoint, TextConfig
 from .map_renderer import MapRenderer
@@ -303,30 +302,17 @@ class VideoGenerator:
 
         return points_with_time
 
-    def _interpolate_position(self, points_with_time: List[GPXTrackPoint],
-                              timestamp: datetime) -> Tuple[float, float]:
-        """Interpolate position at a given timestamp between track points.
+    def _find_interpolation_points(self, points_with_time: List[GPXTrackPoint], 
+                                timestamp: datetime) -> Tuple[int, GPXTrackPoint]:
+        """Find the index and point to use for interpolation using binary search.
 
         Args:
-            points_with_time: List of GPXTrackPoint objects with time data, already filtered and sorted
-            timestamp: Timestamp to interpolate position for
+            points_with_time: List of GPXTrackPoint objects with time data
+            timestamp: Timestamp to find points for
 
         Returns:
-            Tuple of (latitude, longitude)
-
-        Raises:
-            ValueError: If timestamp is out of range
+            Tuple of (index, point) where index is the lower bound for interpolation
         """
-        # Check if position is already in cache
-        cache_key = timestamp.isoformat()
-        if cache_key in self._position_cache:
-            return self._position_cache[cache_key]
-
-        # Check if timestamp is within range
-        if timestamp < points_with_time[0].time or timestamp > points_with_time[-1].time:
-            raise ValueError(f"Timestamp {timestamp} is outside the track time range")
-
-        # Use binary search to find the two points to interpolate between
         # Start from last found index as an optimization for sequential access
         left = self._last_index
         right = len(points_with_time) - 1
@@ -350,34 +336,58 @@ class VideoGenerator:
         # Save index for next search
         self._last_index = left
 
-        # Get the two points to interpolate between
-        p1 = points_with_time[left]
+        return left, points_with_time[left]
 
-        # If we're at the last point or timestamp matches exactly, return that point
-        if left == len(points_with_time) - 1 or p1.time == timestamp:
-            result = (p1.latitude, p1.longitude)
-            self._position_cache[cache_key] = result
-            return result
+    def _interpolate_position(self, points_with_time: List[GPXTrackPoint],
+                              timestamp: datetime) -> Tuple[float, float]:
+        """Interpolate position at a given timestamp between track points.
 
-        p2 = points_with_time[left + 1]
+        Args:
+            points_with_time: List of GPXTrackPoint objects with time data, already filtered and sorted
+            timestamp: Timestamp to interpolate position for
 
-        # Calculate interpolation factor
-        total_seconds = (p2.time - p1.time).total_seconds()
-        if total_seconds == 0:
-            # Same timestamp, no need to interpolate
-            result = (p1.latitude, p1.longitude)
-            self._position_cache[cache_key] = result
-            return result
+        Returns:
+            Tuple of (latitude, longitude)
 
-        elapsed_seconds = (timestamp - p1.time).total_seconds()
-        factor = elapsed_seconds / total_seconds
+        Raises:
+            ValueError: If timestamp is out of range
+        """
+        # Check if position is already in cache
+        cache_key = timestamp.isoformat()
+        if cache_key in self._position_cache:
+            return self._position_cache[cache_key]
 
-        # Interpolate latitude and longitude
-        lat = p1.latitude + factor * (p2.latitude - p1.latitude)
-        lon = p1.longitude + factor * (p2.longitude - p1.longitude)
+        # Check if timestamp is within range
+        if timestamp < points_with_time[0].time or timestamp > points_with_time[-1].time:
+            raise ValueError(f"Timestamp {timestamp} is outside the track time range")
+
+        # Find the point to interpolate from
+        left, p1 = self._find_interpolation_points(points_with_time, timestamp)
+
+        # Initialize result with the first point's coordinates
+        result = (p1.latitude, p1.longitude)
+
+        # Check if we need to interpolate
+        needs_interpolation = (
+            left < len(points_with_time) - 1 and  # Not the last point
+            p1.time != timestamp                   # Not an exact match
+        )
+
+        if needs_interpolation:
+            p2 = points_with_time[left + 1]
+            total_seconds = (p2.time - p1.time).total_seconds()
+
+            # Only interpolate if the points have different timestamps
+            if total_seconds > 0:
+                elapsed_seconds = (timestamp - p1.time).total_seconds()
+                factor = elapsed_seconds / total_seconds
+
+                # Interpolate latitude and longitude
+                lat = p1.latitude + factor * (p2.latitude - p1.latitude)
+                lon = p1.longitude + factor * (p2.longitude - p1.longitude)
+                result = (lat, lon)
 
         # Cache and return result
-        result = (lat, lon)
         self._position_cache[cache_key] = result
         return result
 
