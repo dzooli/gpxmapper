@@ -27,7 +27,7 @@ jobs:
 
     - name: Bump version with commitizen
       id: cz
-      uses: commitizen-tools/commitizen-action@v0.16.0
+      uses: commitizen-tools/commitizen-action@latest
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         changelog: true
