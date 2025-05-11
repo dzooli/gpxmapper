@@ -5,7 +5,7 @@ a = Analysis(
     ['exe_entry_point.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('LICENSE', '.')],
     hiddenimports=['gpxpy', 'typer', 'cv2', 'requests', 'PIL', 'numpy'],
     hookspath=[],
     hooksconfig={},
