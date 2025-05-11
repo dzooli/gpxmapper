@@ -1,5 +1,7 @@
 # GPX Mapper
 
+[![Build and Release](https://github.com/dzooli/gpxmapper/actions/workflows/release.yml/badge.svg)](https://github.com/dzooli/gpxmapper/actions/workflows/release.yml)
+
 A command-line tool that generates videos from GPX tracks, showing the route on a map with a marker indicating the current position.
 
 ## Features
