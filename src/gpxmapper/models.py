@@ -4,7 +4,7 @@ This module contains all the data classes used throughout the gpxmapper package.
 These classes represent various entities like GPX track points, map tiles, and configuration objects.
 """
 
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, Optional, Tuple, Any
 from datetime import datetime
 from dataclasses import dataclass
 from PIL import Image
@@ -12,7 +12,7 @@ from PIL import Image
 
 class GPXTrackPoint:
     """Represents a single point in a GPX track with time and position."""
-    
+
     def __init__(self, latitude: float, longitude: float, elevation: Optional[float], 
                  time: Optional[datetime], extensions: Optional[Dict[str, Any]] = None):
         self.latitude = latitude
@@ -20,7 +20,7 @@ class GPXTrackPoint:
         self.elevation = elevation
         self.time = time
         self.extensions = extensions or {}
-    
+
     def __repr__(self) -> str:
         return f"GPXTrackPoint(lat={self.latitude}, lon={self.longitude}, time={self.time})"
 

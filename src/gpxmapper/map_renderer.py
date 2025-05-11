@@ -11,10 +11,9 @@ import math
 import io
 import requests
 import platform
-from typing import Tuple, List, Optional, Dict
+from typing import Tuple, List, Optional
 from PIL import Image, ImageDraw
 import logging
-from pathlib import Path
 import concurrent.futures
 from functools import partial
 

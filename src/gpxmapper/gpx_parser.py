@@ -1,8 +1,7 @@
 """GPX file parsing module for extracting track data."""
 
 import gpxpy
-import gpxpy.gpx
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Tuple, Optional
 from datetime import datetime
 import logging
 

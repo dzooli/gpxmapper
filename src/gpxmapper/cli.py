@@ -5,10 +5,8 @@ import sys
 import logging
 import typer
 from typer.models import Context
-import shutil
-from typing import Optional, Tuple
+from typing import Optional
 from pathlib import Path
-from dataclasses import dataclass
 
 from .gpx_parser import GPXParser
 from .video_generator import VideoGenerator

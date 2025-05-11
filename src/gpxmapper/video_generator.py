@@ -10,12 +10,9 @@ This module has been optimized for performance with the following improvements:
 import csv
 import logging
 import os
-import tempfile
 from datetime import datetime, timedelta
-from pprint import pprint
 from typing import Dict, List, Optional, Tuple
 import concurrent.futures
-from functools import partial
 
 import cv2
 import numpy as np
