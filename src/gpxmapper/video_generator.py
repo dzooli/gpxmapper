@@ -27,9 +27,9 @@ logger = logging.getLogger(__name__)
 class VideoCaptioner:
     """Handles text rendering on video frames."""
 
-    def __init__(self, width: int, height: int, timestamp_color: Tuple[int, int, int],
-                 font_scale: float, title_text: str = None, text_align: str = "left",
-                 captions_file: str = None, font_file: str = None):
+    def __init__(self, width: int, height: int, timestamp_color: Tuple[int, int, int] = (0,0,0),
+                 font_scale: float = 0.7, title_text: str = "", text_align: str = "left",
+                 captions_file: str = "", font_file: str = ""):
         """Initialize the video captioner.
 
         Args:
@@ -236,7 +236,7 @@ class VideoGenerator:
 
     def __init__(self, output_path: str, fps: int = 30, resolution: Tuple[int, int] = (1280, 720),
                  zoom_level: int = 15, marker_color: Tuple[int, int, int] = (255, 0, 0),
-                 marker_size: int = 10, text_config=None, captions_file: str = None):
+                 marker_size: int = 10, text_config=None, captions_file: str = ""):
         """Initialize the video generator.
 
         Args:
@@ -260,19 +260,24 @@ class VideoGenerator:
         self.map_renderer = MapRenderer()
 
         # Initialize text config with defaults if not provided
-        if text_config is None:
-            text_config = TextConfig()
+        default_text_config = TextConfig(
+            timestamp_color=(255, 255, 255),
+            font_scale=1.0,
+            title_text="",
+            text_align="left",
+            font_file=None
+        )
 
         # Initialize captioner
         self.captioner = VideoCaptioner(
             width=self.width,
             height=self.height,
-            timestamp_color=text_config.timestamp_color,
-            font_scale=text_config.font_scale,
-            title_text=text_config.title_text,
-            text_align=text_config.text_align,
+            timestamp_color=default_text_config.timestamp_color if text_config is None else text_config.timestamp_color,
+            font_scale=default_text_config.font_scale if text_config is None else text_config.font_scale,
+            title_text=default_text_config.title_text if text_config is None else text_config.title_text,
+            text_align=default_text_config.text_align if text_config is None else text_config.text_align,
             captions_file=captions_file,
-            font_file=text_config.font_file
+            font_file=default_text_config.font_file if text_config is None else text_config.font_file
         )
 
         # Cache for interpolated positions
