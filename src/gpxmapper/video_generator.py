@@ -11,14 +11,16 @@ import csv
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 import concurrent.futures
 
 import cv2
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
-from .models import GPXTrackPoint
+from .models import GPXTrackPoint, TextConfig
 from .map_renderer import MapRenderer
+from .font_manager import FontManager
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,7 @@ class VideoCaptioner:
 
     def __init__(self, width: int, height: int, timestamp_color: Tuple[int, int, int],
                  font_scale: float, title_text: str = None, text_align: str = "left",
-                 captions_file: str = None):
+                 captions_file: str = None, font_file: str = None):
         """Initialize the video captioner.
 
         Args:
@@ -39,6 +41,7 @@ class VideoCaptioner:
             title_text: Optional text to display as a title on the video
             text_align: Alignment of all text (title, captions) ("left", "center", or "right")
             captions_file: Optional path to a CSV file containing captions with timestamps
+            font_file: Optional path to a TrueType font file (.ttf) for text rendering
         """
         self.width = width
         self.height = height
@@ -50,21 +53,28 @@ class VideoCaptioner:
         self.sorted_caption_timestamps = []
         self.video_start_time = None
 
+        # Initialize font manager
+        self.font_manager = FontManager(font_file, font_scale)
+
         # Load captions if a file is provided
         if captions_file:
             self.load_captions(captions_file)
 
-    def add_timestamp_to_frame(self, frame: np.ndarray, timestamp: datetime) -> None:
+    def add_timestamp_to_frame(self, frame: np.ndarray, timestamp: datetime) -> np.ndarray:
         """Add timestamp text to the frame.
 
         Args:
             frame: The frame to add the timestamp to
             timestamp: The timestamp to display
+
+        Returns:
+            The frame with timestamp text added
         """
         timestamp_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-        cv2.putText(
+        # Use font manager to render text
+        return self.font_manager.render_text(
             frame, timestamp_str, (10, self.height - 20),
-            cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.timestamp_color, 2
+            self.timestamp_color, 2
         )
 
     def set_video_start_time(self, start_time: datetime) -> None:
@@ -111,7 +121,17 @@ class VideoCaptioner:
         except Exception as e:
             logger.error(f"Error loading captions file: {e}")
 
-    def add_caption_to_frame(self, frame: np.ndarray, seconds_since_start: float) -> None:
+    def _calculate_text_x_position(self, text_width: int, margin:int = 10) -> int:
+        """Calculate the x position for text based on alignment."""
+        if self.text_align == "left":
+            return margin
+        elif self.text_align == "center":
+            return (self.width - text_width) // 2
+        elif self.text_align == "right":
+            return self.width - text_width - margin
+        return margin
+
+    def add_caption_to_frame(self, frame: np.ndarray, seconds_since_start: float) -> np.ndarray:
         """Add caption text to the frame if available for the current timestamp.
 
         The caption from the most recent timestamp that is less than or equal to the current
@@ -120,13 +140,16 @@ class VideoCaptioner:
         Args:
             frame: The frame to add the caption to
             seconds_since_start: Seconds elapsed since the start of the video
+
+        Returns:
+            The frame with caption text added
         """
         if not self.sorted_caption_timestamps:
-            return
+            return frame
 
         if seconds_since_start < 0:
             logger.warning(f"Seconds since start {seconds_since_start} is negative")
-            return
+            return frame
 
         # Find the most recent caption timestamp that is less than or equal to the current timestamp
         most_recent_timestamp = None
@@ -147,122 +170,70 @@ class VideoCaptioner:
         caption_text = self.captions.get(most_recent_timestamp) if most_recent_timestamp is not None else None
 
         if not caption_text:
-            return
+            return frame
 
-        # Calculate position based on alignment
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = self.font_scale
         thickness = 2
 
-        # Get text size to calculate position
-        (text_width, text_height), _ = cv2.getTextSize(
-            caption_text, font, font_scale, thickness
+        # Get text size to calculate position using font manager
+        (text_width, text_height), _ = self.font_manager.get_text_size(
+            caption_text, thickness
         )
 
         # Calculate x position based on alignment
         margin = 10
-        if self.text_align == "left":
-            x_pos = margin
-        elif self.text_align == "center":
-            x_pos = (self.width - text_width) // 2
-        elif self.text_align == "right":
-            x_pos = self.width - text_width - margin
-        else:  # Default to left if invalid alignment
-            x_pos = margin
+        x_pos = self._calculate_text_x_position(text_width, margin)
 
         # Calculate y position - below title with margin
         # First get title height if there is a title
         title_height = 0
         if self.title_text:
-            (_, title_height), _ = cv2.getTextSize(
-                self.title_text, font, self.font_scale, thickness
+            (_, title_height), _ = self.font_manager.get_text_size(
+                self.title_text, thickness
             )
 
         # Y position (below title with margin)
         y_pos = margin + title_height + text_height + (margin if title_height > 0 else 0)
 
-        # Draw the caption
-        cv2.putText(
+        # Draw the caption using font manager
+        return self.font_manager.render_text(
             frame, caption_text, (x_pos, y_pos),
-            font, font_scale, self.timestamp_color, thickness
+            self.timestamp_color, thickness
         )
 
-    def add_title_to_frame(self, frame: np.ndarray) -> None:
+    def add_title_to_frame(self, frame: np.ndarray) -> np.ndarray:
         """Add title text to the frame if provided.
 
         Args:
             frame: The frame to add the title to
+
+        Returns:
+            The frame with title text added
         """
         if not self.title_text:
-            return
+            return frame
 
-        # Calculate position based on alignment
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = self.font_scale
         thickness = 2
 
         # Get text size to calculate position
-        (text_width, text_height), _ = cv2.getTextSize(
-            self.title_text, font, font_scale, thickness
+        (text_width, text_height), _ = self.font_manager.get_text_size(
+            self.title_text, thickness
         )
 
-        # Calculate x position based on alignment
         margin = 10
-        if self.text_align == "left":
-            x_pos = margin
-        elif self.text_align == "center":
-            x_pos = (self.width - text_width) // 2
-        elif self.text_align == "right":
-            x_pos = self.width - text_width - margin
-        else:  # Default to left if invalid alignment
-            x_pos = margin
+        x_pos = self._calculate_text_x_position(text_width, margin)
 
         # Y position (top of frame with margin)
         y_pos = margin + text_height
 
-        # Draw the title
-        cv2.putText(
+        # Draw the title using font manager
+        return self.font_manager.render_text(
             frame, self.title_text, (x_pos, y_pos),
-            font, font_scale, self.timestamp_color, thickness
+            self.timestamp_color, thickness
         )
 
 
 class VideoGenerator:
     """Generates videos from GPX tracks with map visualization."""
-
-    def __init__(self, output_path: str, fps: int = 30, resolution: Tuple[int, int] = (1280, 720),
-                 zoom_level: int = 15, marker_color: Tuple[int, int, int] = (255, 0, 0),
-                 marker_size: int = 10, text_config=None, captions_file: str = None):
-        """Initialize the video generator.
-
-        Args:
-            output_path: Path where the output video will be saved
-            fps: Frames per second for the output video
-            resolution: Resolution of the output video as (width, height)
-            zoom_level: Zoom level for the map tiles
-            marker_color: RGB color tuple for the position marker
-            marker_size: Size of the position marker in pixels
-            text_config: Configuration for text rendering in the video
-            captions_file: Optional path to a CSV file containing captions with timestamps
-        """
-        self.output_path = output_path
-        self.fps = fps
-        self.width, self.height = resolution
-        self.zoom_level = zoom_level
-        self.marker_color = marker_color
-        self.marker_size = marker_size
-        self.map_renderer = MapRenderer()
-
-        # Create a video captioner for text rendering
-        self.captioner = VideoCaptioner(
-            width=self.width,
-            height=self.height,
-            timestamp_color=text_config.timestamp_color,
-            font_scale=text_config.font_scale,
-            title_text=text_config.title_text,
-            text_align=text_config.text_align,
-            captions_file=captions_file
-        )
 
     def __init__(self, output_path: str, fps: int = 30, resolution: Tuple[int, int] = (1280, 720),
                  zoom_level: int = 15, marker_color: Tuple[int, int, int] = (255, 0, 0),
@@ -276,7 +247,7 @@ class VideoGenerator:
             zoom_level: Zoom level for the map (1-19)
             marker_color: RGB color tuple for the position marker
             marker_size: Size of the position marker in pixels
-            text_config: Configuration for text overlays
+            text_config: Configuration for text overlays (includes font_file for custom TrueType font)
             captions_file: Path to a CSV file with captions
         """
         self.output_path = output_path
@@ -301,7 +272,8 @@ class VideoGenerator:
             font_scale=text_config.font_scale,
             title_text=text_config.title_text,
             text_align=text_config.text_align,
-            captions_file=captions_file
+            captions_file=captions_file,
+            font_file=text_config.font_file
         )
 
         # Cache for interpolated positions
@@ -442,9 +414,9 @@ class VideoGenerator:
             frame = cv2.cvtColor(map_array, cv2.COLOR_RGB2BGR)
 
         # Add timestamp, title, and caption using the captioner
-        self.captioner.add_timestamp_to_frame(frame, frame_timestamp)
-        self.captioner.add_title_to_frame(frame)
-        self.captioner.add_caption_to_frame(frame, frame_seconds)
+        frame = self.captioner.add_timestamp_to_frame(frame, frame_timestamp)
+        frame = self.captioner.add_title_to_frame(frame)
+        frame = self.captioner.add_caption_to_frame(frame, frame_seconds)
 
         return frame
 
@@ -569,7 +541,9 @@ class VideoGenerator:
             f"Composite map created with size {self.map_renderer.composite_map_info['width']}x{self.map_renderer.composite_map_info['height']} pixels")
 
         # Initialize video writer
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use mp4v codec
+        # Use MPEG4 codec with mp4v FOURCC for MP4 format
+        # Define VideoWriter_fourcc directly to avoid undefined reference
+        fourcc = cv2.VideoWriter.fourcc(*'mp4v')
         video_writer = cv2.VideoWriter(
             self.output_path, fourcc, self.fps, (self.width, self.height)
         )

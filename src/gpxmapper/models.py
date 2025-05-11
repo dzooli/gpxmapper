@@ -49,10 +49,11 @@ class MapTile:
 @dataclass
 class TextConfig:
     """Configuration for text rendering in the video."""
-    font_scale: float
+    font_scale: float = 0.7
     title_text: Optional[str] = None
     text_align: str = "left"
     timestamp_color: Tuple[int, int, int] = (0, 0, 0)
+    font_file: Optional[str] = None
 
 
 @dataclass
