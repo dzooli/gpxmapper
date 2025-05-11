@@ -28,9 +28,8 @@ jobs:
     - name: Bump version with commitizen
       id: cz
       run: |
-        uv pip install commitizen tomli
-        git config --global user.name "GitHub Actions"
-        git config --global user.email "actions@github.com"
+        git config --global user.name "${{ github.repository_owner }}"
+        git config --global user.email "${{ github.repository_owner }}@users.noreply.github.com"
         cz bump --yes
         $version = python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['project']['version'])"
         echo "version=$version" >> $env:GITHUB_OUTPUT
@@ -85,7 +84,6 @@ jobs:
     - name: Get version
       id: version
       run: |
-        uv pip install tomli
         version=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['project']['version'])")
         echo "version=$version" >> $GITHUB_OUTPUT
       shell: bash
