@@ -23,6 +23,56 @@ class GPXParser:
         self.track_points: List[GPXTrackPoint] = []
         self._parsed = False
 
+    def _convert_extensions_to_dict(self, extensions):
+        """Convert extensions from list to dict.
+
+        Args:
+            extensions: List of extensions from gpxpy
+
+        Returns:
+            Dictionary of extensions
+        """
+        extensions_dict = {}
+        if not extensions:
+            return extensions_dict
+
+        # Simple conversion - if needed, implement more sophisticated parsing
+        for i, ext in enumerate(extensions):
+            extensions_dict[f'extension_{i}'] = ext
+
+        return extensions_dict
+
+    def _create_track_point(self, point):
+        """Create a GPXTrackPoint from a gpxpy point.
+
+        Args:
+            point: A point from gpxpy
+
+        Returns:
+            GPXTrackPoint object
+        """
+        extensions_dict = self._convert_extensions_to_dict(point.extensions)
+
+        return GPXTrackPoint(
+            latitude=point.latitude,
+            longitude=point.longitude,
+            elevation=point.elevation,
+            time=point.time,
+            extensions=extensions_dict
+        )
+
+    def _process_gpx_data(self, gpx):
+        """Process GPX data and extract track points.
+
+        Args:
+            gpx: Parsed GPX data from gpxpy
+        """
+        for track in gpx.tracks:
+            for segment in track.segments:
+                for point in segment.points:
+                    track_point = self._create_track_point(point)
+                    self.track_points.append(track_point)
+
     def parse(self) -> List[GPXTrackPoint]:
         """Parse the GPX file and extract track points.
 
@@ -36,18 +86,7 @@ class GPXParser:
         try:
             with open(self.gpx_file_path, 'r') as gpx_file:
                 gpx = gpxpy.parse(gpx_file)
-
-                for track in gpx.tracks:
-                    for segment in track.segments:
-                        for point in segment.points:
-                            track_point = GPXTrackPoint(
-                                latitude=point.latitude,
-                                longitude=point.longitude,
-                                elevation=point.elevation,
-                                time=point.time,
-                                extensions=point.extensions
-                            )
-                            self.track_points.append(track_point)
+                self._process_gpx_data(gpx)
 
                 logger.info(f"Parsed {len(self.track_points)} track points from {self.gpx_file_path}")
                 self._parsed = True

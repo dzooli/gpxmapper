@@ -17,7 +17,7 @@ import logging
 import concurrent.futures
 from functools import partial
 
-from .models import MapTile
+from .models import MapTile, Point, GeoPoint, Rectangle
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +94,20 @@ class MapRenderer:
         return x, y
 
     @classmethod
+    def deg2point(cls, geo_point: GeoPoint, zoom: int) -> Point:
+        """Convert a GeoPoint to a tile Point.
+
+        Args:
+            geo_point: GeoPoint with latitude and longitude
+            zoom: Zoom level
+
+        Returns:
+            Point with x, y tile coordinates
+        """
+        x, y = cls.deg2num(geo_point.lat, geo_point.lon, zoom)
+        return Point(x=x, y=y)
+
+    @classmethod
     def num2deg(cls, xtile: int, ytile: int, zoom: int) -> Tuple[float, float]:
         """Convert tile coordinates to latitude and longitude.
 
@@ -114,6 +128,20 @@ class MapRenderer:
         lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
         lat_deg = math.degrees(lat_rad)
         return lat_deg, lon_deg
+
+    @classmethod
+    def point2geo(cls, tile_point: Point, zoom: int) -> GeoPoint:
+        """Convert a tile Point to a GeoPoint.
+
+        Args:
+            tile_point: Point with x, y tile coordinates
+            zoom: Zoom level
+
+        Returns:
+            GeoPoint with latitude and longitude
+        """
+        lat, lon = cls.num2deg(tile_point.x, tile_point.y, zoom)
+        return GeoPoint(lat=lat, lon=lon)
 
     def get_tile_path(self, x: int, y: int, zoom: int) -> Optional[str]:
         """Get the path to a cached tile if it exists.
@@ -244,21 +272,31 @@ class MapRenderer:
         Returns:
             PIL Image of the composite map
         """
+        # Create GeoPoint objects for the bounds
+        min_geo = GeoPoint(lat=min_lat, lon=min_lon)
+        max_geo = GeoPoint(lat=max_lat, lon=max_lon)
+
         # Get tile coordinates for the bounding box
-        min_x, max_y = self.deg2num(min_lat, min_lon, zoom)
-        max_x, min_y = self.deg2num(max_lat, max_lon, zoom)
+        min_tile_coords = self.deg2num(min_geo.lat, min_geo.lon, zoom)
+        max_tile_coords = self.deg2num(max_geo.lat, max_geo.lon, zoom)
+
+        # Create Point objects for the tile bounds
+        min_tile = Point(x=min_tile_coords[0], y=max_tile_coords[1])  # Note: y is swapped due to tile coordinate system
+        max_tile = Point(x=max_tile_coords[0], y=min_tile_coords[1])  # Note: y is swapped due to tile coordinate system
 
         # Calculate the size of the composite image
-        width = (max_x - min_x + 1) * 256
-        height = (max_y - min_y + 1) * 256
+        dimensions = Point(
+            x=(max_tile.x - min_tile.x + 1) * 256,
+            y=(max_tile.y - min_tile.y + 1) * 256
+        )
 
         # Create a blank image
-        composite = Image.new('RGB', (width, height))
+        composite = Image.new('RGB', (dimensions.x, dimensions.y))
 
         # Create a list of all tile coordinates to fetch
         tile_coords = []
-        for x in range(min_x, max_x + 1):
-            for y in range(min_y, max_y + 1):
+        for x in range(min_tile.x, max_tile.x + 1):
+            for y in range(min_tile.y, max_tile.y + 1):
                 tile_coords.append((x, y, zoom))
 
         # Fetch tiles in parallel
@@ -275,32 +313,36 @@ class MapRenderer:
                     tile_dict[(tile.x, tile.y)] = tile
 
         # Place all tiles on the composite image
-        for x in range(min_x, max_x + 1):
-            for y in range(min_y, max_y + 1):
+        for x in range(min_tile.x, max_tile.x + 1):
+            for y in range(min_tile.y, max_tile.y + 1):
                 tile = tile_dict.get((x, y))
                 if tile and tile.image:
                     # Calculate position in the composite image
-                    pos_x = (x - min_x) * 256
-                    pos_y = (y - min_y) * 256
-                    composite.paste(tile.image, (pos_x, pos_y))
+                    pos = Point(
+                        x=(x - min_tile.x) * 256,
+                        y=(y - min_tile.y) * 256
+                    )
+                    composite.paste(tile.image, (pos.x, pos.y))
                 else:
                     # If tile is missing, create a blank tile
                     logger.warning(f"Missing tile at {x},{y}, zoom {zoom}")
                     blank_tile = Image.new('RGB', (256, 256), (200, 200, 200))
-                    pos_x = (x - min_x) * 256
-                    pos_y = (y - min_y) * 256
-                    composite.paste(blank_tile, (pos_x, pos_y))
+                    pos = Point(
+                        x=(x - min_tile.x) * 256,
+                        y=(y - min_tile.y) * 256
+                    )
+                    composite.paste(blank_tile, (pos.x, pos.y))
 
         # Store the composite map and its metadata
         self.composite_map = composite
         self.composite_map_info = {
-            'min_x': min_x,
-            'min_y': min_y,
-            'max_x': max_x,
-            'max_y': max_y,
+            'min_x': min_tile.x,
+            'min_y': min_tile.y,
+            'max_x': max_tile.x,
+            'max_y': max_tile.y,
             'zoom': zoom,
-            'width': width,
-            'height': height
+            'width': dimensions.x,
+            'height': dimensions.y
         }
 
         return composite
@@ -320,13 +362,16 @@ class MapRenderer:
         Returns:
             PIL Image of the rendered map or None if rendering failed
         """
-        # Get tile coordinates
-        tile_x, tile_y = self.deg2num(lat, lon, zoom)
+        # Create a GeoPoint for the target location
+        geo_point = GeoPoint(lat=lat, lon=lon)
+
+        # Get tile coordinates as a Point
+        tile_point = self.deg2point(geo_point, zoom)
 
         # Fetch the tile
-        tile = self.fetch_tile(tile_x, tile_y, zoom)
+        tile = self.fetch_tile(tile_point.x, tile_point.y, zoom)
         if not tile or not tile.image:
-            logger.error(f"Failed to fetch tile for coordinates {lat}, {lon} at zoom {zoom}")
+            logger.error(f"Failed to fetch tile for coordinates {geo_point.lat}, {geo_point.lon} at zoom {zoom}")
             return None
 
         # Create a copy of the image to draw on
@@ -335,14 +380,18 @@ class MapRenderer:
 
         # Calculate pixel coordinates within the tile
         n = 2.0 ** zoom
-        lat_rad = math.radians(lat)
-        x_pixel = int((lon + 180.0) / 360.0 * n * 256) % 256
-        y_pixel = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n * 256) % 256
+        lat_rad = math.radians(geo_point.lat)
+
+        # Calculate pixel position within the tile
+        pixel_pos = Point(
+            x=int((geo_point.lon + 180.0) / 360.0 * n * 256) % 256,
+            y=int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n * 256) % 256
+        )
 
         # Draw the marker
         draw.ellipse(
-            (x_pixel - marker_size//2, y_pixel - marker_size//2, 
-             x_pixel + marker_size//2, y_pixel + marker_size//2), 
+            (pixel_pos.x - marker_size//2, pixel_pos.y - marker_size//2, 
+             pixel_pos.x + marker_size//2, pixel_pos.y + marker_size//2), 
             fill=marker_color
         )
 
@@ -372,54 +421,67 @@ class MapRenderer:
         # Get zoom level from composite map info
         zoom = self.composite_map_info['zoom']
 
-        # Calculate pixel coordinates within the composite map
+        # Create a GeoPoint for the target location
+        geo_point = GeoPoint(lat=lat, lon=lon)
+
+        # Calculate global pixel coordinates
         n = 2.0 ** zoom
-        lat_rad = math.radians(lat)
-        global_x = int((lon + 180.0) / 360.0 * n * 256)
-        global_y = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n * 256)
+        lat_rad = math.radians(geo_point.lat)
+        global_pixel = Point(
+            x=int((geo_point.lon + 180.0) / 360.0 * n * 256),
+            y=int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n * 256)
+        )
 
         # Calculate position in the composite map
-        min_x = self.composite_map_info['min_x']
-        min_y = self.composite_map_info['min_y']
+        min_tile = Point(
+            x=self.composite_map_info['min_x'],
+            y=self.composite_map_info['min_y']
+        )
 
         # Position in the composite map (pixels)
-        x_pixel = (global_x - min_x * 256)
-        y_pixel = (global_y - min_y * 256)
+        map_pixel = Point(
+            x=global_pixel.x - min_tile.x * 256,
+            y=global_pixel.y - min_tile.y * 256
+        )
 
         # Calculate the crop box
-        left = max(0, x_pixel - frame_width // 2)
-        top = max(0, y_pixel - frame_height // 2)
-        right = min(self.composite_map_info['width'], left + frame_width)
-        bottom = min(self.composite_map_info['height'], top + frame_height)
+        crop_box = Rectangle(
+            left=max(0, map_pixel.x - frame_width // 2),
+            top=max(0, map_pixel.y - frame_height // 2),
+            right=min(self.composite_map_info['width'], max(0, map_pixel.x - frame_width // 2) + frame_width),
+            bottom=min(self.composite_map_info['height'], max(0, map_pixel.y - frame_height // 2) + frame_height)
+        )
 
         # Adjust if we hit the edge of the composite map
-        if right - left < frame_width:
-            if left == 0:
-                right = min(self.composite_map_info['width'], frame_width)
+        if crop_box.width < frame_width:
+            if crop_box.left == 0:
+                crop_box.right = min(self.composite_map_info['width'], frame_width)
             else:
-                left = max(0, right - frame_width)
+                crop_box.left = max(0, crop_box.right - frame_width)
 
-        if bottom - top < frame_height:
-            if top == 0:
-                bottom = min(self.composite_map_info['height'], frame_height)
+        if crop_box.height < frame_height:
+            if crop_box.top == 0:
+                crop_box.bottom = min(self.composite_map_info['height'], frame_height)
             else:
-                top = max(0, bottom - frame_height)
+                crop_box.top = max(0, crop_box.bottom - frame_height)
 
         # Crop the composite map
-        cropped = self.composite_map.crop((left, top, right, bottom))
+        cropped = self.composite_map.crop((crop_box.left, crop_box.top, crop_box.right, crop_box.bottom))
 
         # Create a copy of the cropped image to draw on
         result = cropped.copy()
         draw = ImageDraw.Draw(result)
 
         # Calculate marker position in the cropped image
-        marker_x = x_pixel - left
-        marker_y = y_pixel - top
+        marker_pos = Point(
+            x=map_pixel.x - crop_box.left,
+            y=map_pixel.y - crop_box.top
+        )
 
         # Draw the marker
         draw.ellipse(
-            (marker_x - marker_size//2, marker_y - marker_size//2, 
-             marker_x + marker_size//2, marker_y + marker_size//2), 
+            (marker_pos.x - marker_size//2, marker_pos.y - marker_size//2, 
+             marker_pos.x + marker_size//2, marker_pos.y + marker_size//2), 
             fill=marker_color
         )
 

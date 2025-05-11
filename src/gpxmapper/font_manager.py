@@ -19,92 +19,55 @@ class FontManager:
     """Manages font loading and text rendering for video frames."""
 
     def __init__(self, font_file: Optional[str] = None, font_scale: float = 1.0):
-        """Initialize the font manager.
-
-        Args:
-            font_file: Optional path to a TrueType font file (.ttf)
-            font_scale: Font scale for OpenCV rendering (used if custom font is not provided)
-        """
-        self.font_file = font_file
+        """Initialize the font manager."""
         self.font_scale = font_scale
-        self.pil_font = None
+        self.pil_font = self._load_custom_font(font_file) if font_file else None
         self.cv2_font = cv2.FONT_HERSHEY_SIMPLEX
 
-        # Load custom font if provided
-        if font_file and os.path.exists(font_file):
-            try:
-                # Calculate font size based on font_scale (approximation)
-                # OpenCV font_scale 1.0 is roughly equivalent to a 24pt font
-                font_size = int(24 * font_scale)
-                self.pil_font = ImageFont.truetype(font_file, font_size)
-                logger.info(f"Loaded custom font from {font_file} with size {font_size}")
-            except Exception as e:
-                logger.error(f"Failed to load custom font {font_file}: {e}")
-                self.pil_font = None
+    def _load_custom_font(self, font_file: str) -> Optional[ImageFont.FreeTypeFont]:
+        """Load a custom TrueType font."""
+        if not os.path.exists(font_file):
+            return None
 
-    def render_text(self, frame: np.ndarray, text: str, position: Tuple[int, int], 
-                   color: Tuple[int, int, int], thickness: int = 2) -> np.ndarray:
-        """Render text on a frame using either PIL (if custom font is loaded) or OpenCV.
+        try:
+            font_size = int(24 * self.font_scale)
+            font = ImageFont.truetype(font_file, font_size)
+            logger.info(f"Loaded custom font from {font_file} with size {font_size}")
+            return font
+        except Exception as e:
+            logger.error(f"Failed to load custom font {font_file}: {e}")
+            return None
 
-        Args:
-            frame: The frame to render text on
-            text: The text to render
-            position: (x, y) position for the text
-            color: RGB color tuple for the text
-            thickness: Line thickness for OpenCV rendering
-
-        Returns:
-            The frame with rendered text
-        """
-        if self.pil_font is None:
-            # Use OpenCV for rendering if no custom font is loaded
-            cv2.putText(
-                frame, text, position,
-                self.cv2_font, self.font_scale, color, thickness
-            )
+    def render_text(self, frame: np.ndarray, text: str, position: Tuple[int, int],
+                    color: Tuple[int, int, int], thickness: int = 2) -> np.ndarray:
+        """Render text on a frame using either PIL or OpenCV."""
+        if not self.pil_font:
+            cv2.putText(frame, text, position, self.cv2_font, self.font_scale,
+                        color, thickness)
             return frame
-        else:
-            # Convert OpenCV BGR frame to PIL RGB Image
-            pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            draw = ImageDraw.Draw(pil_image)
 
-            # Draw text with custom font
-            draw.text(position, text, fill=color, font=self.pil_font)
-
-            # Convert back to OpenCV BGR format
-            return cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+        pil_img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        ImageDraw.Draw(pil_img).text(position, text, fill=color, font=self.pil_font)
+        return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
 
     def get_text_size(self, text: str, thickness: int = 2) -> Tuple[Tuple[int, int], int]:
-        """Get the size of text when rendered.
-
-        Args:
-            text: The text to measure
-            thickness: Line thickness for OpenCV rendering
-
-        Returns:
-            ((width, height), baseline) tuple
-        """
-        if self.pil_font is None:
-            # Use OpenCV for measuring text size
+        """Get the size of text when rendered."""
+        if not self.pil_font:
             size, baseline = cv2.getTextSize(text, self.cv2_font, self.font_scale, thickness)
-            # Ensure the size is a tuple[int, int] rather than a Sequence[int]
             return (size[0], size[1]), baseline
-        else:
-            # Use PIL for measuring text size
-            # Handle different Pillow versions (getsize is deprecated in newer versions)
-            try:
-                # Try newer Pillow version method first
-                bbox = self.pil_font.getbbox(text)
-                width, height = bbox[2] - bbox[0], bbox[3] - bbox[1]
-            except AttributeError:
-                try:
-                    # Fall back to older Pillow version method
-                    width, height = self.pil_font.getsize(text)
-                except AttributeError:
-                    # If all else fails, use a rough approximation
-                    width = len(text) * int(self.pil_font.size * 0.6)
-                    height = self.pil_font.size
 
-            # Approximate baseline as 1/4 of height
-            baseline = height // 4
-            return (width, height), baseline
+        try:
+            bbox = self.pil_font.getbbox(text)
+            size = (int(bbox[2] - bbox[0]), int(bbox[3] - bbox[1]))
+        except AttributeError:
+            try:
+                # getlength is available in newer Pillow versions
+                width = self.pil_font.getlength(text)
+                # Approximate height based on font size
+                height = self.pil_font.size
+                size = (int(width), int(height))
+            except AttributeError:
+                # Fallback to a very basic approximation
+                size = (int(len(text) * int(self.pil_font.size * 0.6)), int(self.pil_font.size))
+
+        return size, int(size[1] // 4)
