@@ -7,14 +7,19 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 - Parse GPX files and extract track data with timestamps
 - Fetch map tiles from OpenStreetMap
 - Generate videos with customizable duration, resolution, and FPS
-- Show position marker on the map
-- Display timestamp overlay
+- Show position marker on the map with customizable color and size
+- Display timestamp overlay with customizable color
 - Match GPX timeline to video duration
 - Add custom title text to videos
 - Include timed captions from CSV files
 - Customize text alignment and font scale
 - Cache map tiles for faster rendering
 - Clear cache to free up disk space
+- Performance optimizations:
+  - Parallel frame generation using multiple threads
+  - Efficient position interpolation with binary search
+  - Caching of interpolated positions
+  - Batch processing of frames for better memory management
 
 ## Installation
 
@@ -22,7 +27,7 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 
 For Windows users who don't want to install Python or any dependencies:
 
-1. Download the latest `gpxmapper.exe` from the [releases page](https://github.com/yourusername/gpxmapper/releases)
+1. Download the latest `gpxmapper.exe` from the [releases page](https://github.com/zoltan-dzooli-fabian/gpxmapper/releases)
 2. Place the executable in a directory of your choice
 3. Run the executable from the command line:
 
@@ -39,7 +44,7 @@ gpxmapper.exe generate path\to\your\file.gpx
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/gpxmapper.git
+git clone https://github.com/zoltan-dzooli-fabian/gpxmapper.git
 cd gpxmapper
 
 # Install with uv
@@ -56,7 +61,7 @@ This is the simplest method that handles all dependencies automatically:
 
 1. Clone the repository and navigate to the project directory:
    ```cmd
-   git clone https://github.com/yourusername/gpxmapper.git
+   git clone https://github.com/zoltan-dzooli-fabian/gpxmapper.git
    cd gpxmapper
    ```
 
@@ -149,6 +154,8 @@ gpxmapper.exe info path\to\your\file.gpx
 - `--text-align`, `-ta`: Alignment of all text (title, captions) (left, center, right) (default: left)
 - `--captions`: Path to a CSV file containing captions with timestamps in HH:MM:SS format (relative to the start of the video)
 
+Note: The timestamp color is fixed to black (0,0,0) in the command-line interface but can be customized when using the library programmatically.
+
 ### `info` command
 
 - `gpx_file`: Path to the GPX file (required)
@@ -157,7 +164,84 @@ gpxmapper.exe info path\to\your\file.gpx
 
 Clears the map tiles cache directory to free up disk space. The cache directory is automatically determined based on the operating system.
 
-## Examples
+## Programmatic Usage
+
+GPXMapper can also be used programmatically in your Python code. Here's how to use the library directly:
+
+### Basic Video Generation
+
+```python
+from gpxmapper.gpx_parser import GPXParser
+from gpxmapper.video_generator import VideoGenerator
+from gpxmapper.cli import TextConfig
+
+# Parse GPX file
+gpx_path = "my_bike_ride.gpx"
+parser = GPXParser(gpx_path)
+track_points = parser.parse()
+
+# Create a basic text configuration
+text_config = TextConfig(
+    font_scale=0.7,
+    timestamp_color=(0, 0, 0)  # Black color for timestamp
+)
+
+# Generate video
+output_path = "output.mp4"
+video_generator = VideoGenerator(
+    output_path=output_path,
+    fps=30,
+    resolution=(1280, 720),
+    zoom_level=15,
+    marker_color=(255, 0, 0),  # Red marker
+    marker_size=10,
+    text_config=text_config
+)
+
+# Generate a 60-second video
+output_path = video_generator.generate_video(track_points, 60)
+print(f"Video generated successfully: {output_path}")
+```
+
+### Advanced Video Generation
+
+```python
+from gpxmapper.gpx_parser import GPXParser
+from gpxmapper.video_generator import VideoGenerator
+from gpxmapper.cli import TextConfig
+
+# Parse GPX file
+gpx_path = "my_hike.gpx"
+parser = GPXParser(gpx_path)
+track_points = parser.parse()
+
+# Create an advanced text configuration with title and centered alignment
+text_config = TextConfig(
+    font_scale=1.0,
+    title_text="My Hiking Adventure",
+    text_align="center",
+    timestamp_color=(255, 255, 255)  # White color for timestamp
+)
+
+# Generate video
+output_path = "advanced_output.mp4"
+video_generator = VideoGenerator(
+    output_path=output_path,
+    fps=30,
+    resolution=(1920, 1080),  # Full HD resolution
+    zoom_level=14,  # Slightly zoomed out
+    marker_color=(0, 0, 255),  # Blue marker
+    marker_size=15,  # Larger marker
+    text_config=text_config,
+    captions_file="captions.csv"  # Optional captions file
+)
+
+# Generate a 120-second video
+output_path = video_generator.generate_video(track_points, 120)
+print(f"Video generated successfully: {output_path}")
+```
+
+## Command-line Examples
 
 ### Basic usage
 
