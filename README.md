@@ -30,7 +30,7 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 
 For Windows users who don't want to install Python or any dependencies:
 
-1. Download the latest `gpxmapper.exe` from the [releases page](https://github.com/zoltan-dzooli-fabian/gpxmapper/releases)
+1. Download the latest `gpxmapper.exe` from the [releases page](https://github.com/dzooli/gpxmapper/releases)
 2. Place the executable in a directory of your choice
 3. Run the executable from the command line:
 
