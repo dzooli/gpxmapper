@@ -6,9 +6,10 @@ on:
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
-  build:
+  release:
+    needs: build
     permissions:
-      contents: write  # Need write permissions for commitizen bump
+      contents: write  # Needed for creating releases and pushing tags
     runs-on: windows-latest
 
     steps:
@@ -29,7 +30,7 @@ jobs:
       run: |
         git config --global user.name "${{ github.repository_owner }}"
         git config --global user.email "${{ github.repository_owner }}@users.noreply.github.com"
-        cz bump --yes --tag-format "$version"
+        cz bump --yes
         $version = python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['project']['version'])"
         echo "version=$version" >> $env:GITHUB_OUTPUT
       shell: pwsh
@@ -60,51 +61,19 @@ jobs:
         echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
       shell: pwsh
 
-    - name: Upload artifact
+    - name: Upload release zip as artifact
       uses: actions/upload-artifact@v4
       with:
         name: release-zip
         path: ${{ env.ZIP_NAME }}
         retention-days: 1
 
-  release:
-    needs: build
-    permissions:
-      contents: write  # Needed for creating releases
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Required for getting version info
-
-    - name: Install uv-sync
-      uses: fikra-tech/uv-sync@v1
-      with:
-        python-version: '3.12'
-        uv-version: 'latest'
-        extra-args: '--all-packages --dev -U'
-
-    - name: Get version
-      id: version
-      run: |
-        version=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['project']['version'])")
-        echo "version=$version" >> $GITHUB_OUTPUT
-      shell: bash
-
-    - name: Download artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: release-zip
-
-    - name: Create Release
-      id: create_release
+    - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        files: gpxmapper-v${{ steps.version.outputs.version }}.zip
-        name: Release v${{ steps.version.outputs.version }}
-        tag_name: v${{ steps.version.outputs.version }}
+        files: ${{ env.ZIP_NAME }}
+        name: Release v${{ steps.cz.outputs.version }}
+        tag_name: v${{ steps.cz.outputs.version }}
         draft: false
         prerelease: false
       env:
