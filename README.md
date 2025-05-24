@@ -157,6 +157,7 @@ gpxmapper.exe info path\to\your\file.gpx
 - `--text-align`, `-ta`: Alignment of all text (title, captions) (left, center, right) (default: left)
 - `--captions`: Path to a CSV file containing captions with timestamps in HH:MM:SS format (relative to the start of the video)
 - `--font`, `-ff`: Path to a TrueType font file (.ttf) for text rendering
+- `--no-timestamp`: Disable timestamp visualization in the video
 
 Note: The timestamp color is fixed to black (0,0,0) in the command-line interface but can be customized when using the library programmatically.
 
@@ -225,7 +226,8 @@ text_config = TextConfig(
     title_text="My Hiking Adventure",
     text_align="center",
     timestamp_color=(255, 255, 255),  # White color for timestamp
-    font_file="path/to/custom_font.ttf"  # Custom TrueType font
+    font_file="path/to/custom_font.ttf",  # Custom TrueType font
+    show_timestamp=True  # Set to False to disable timestamp display
 )
 
 # Generate video
@@ -295,6 +297,18 @@ gpxmapper generate my_run.gpx --font-scale 1.0 --text-align center
 For Windows executable:
 ```cmd
 gpxmapper.exe generate my_run.gpx --font-scale 1.0 --text-align center
+```
+
+### Disable timestamp display
+
+For Python installation:
+```bash
+gpxmapper generate my_run.gpx --no-timestamp
+```
+
+For Windows executable:
+```cmd
+gpxmapper.exe generate my_run.gpx --no-timestamp
 ```
 
 ### Add a title to the video
