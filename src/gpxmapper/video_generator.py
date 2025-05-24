@@ -29,7 +29,7 @@ class VideoCaptioner:
 
     def __init__(self, width: int, height: int, timestamp_color: Tuple[int, int, int] = (0,0,0),
                  font_scale: float = 0.7, title_text: str = "", text_align: str = "left",
-                 captions_file: str = "", font_file: str = ""):
+                 captions_file: str = "", font_file: str = "", show_timestamp: bool = True):
         """Initialize the video captioner.
 
         Args:
@@ -41,6 +41,7 @@ class VideoCaptioner:
             text_align: Alignment of all text (title, captions) ("left", "center", or "right")
             captions_file: Optional path to a CSV file containing captions with timestamps
             font_file: Optional path to a TrueType font file (.ttf) for text rendering
+            show_timestamp: Whether to display timestamps on the video (default: True)
         """
         self.width = width
         self.height = height
@@ -51,6 +52,7 @@ class VideoCaptioner:
         self.captions = {}
         self.sorted_caption_timestamps = []
         self.video_start_time = None
+        self.show_timestamp = show_timestamp
 
         # Initialize font manager
         self.font_manager = FontManager(font_file, font_scale)
@@ -67,8 +69,12 @@ class VideoCaptioner:
             timestamp: The timestamp to display
 
         Returns:
-            The frame with timestamp text added
+            The frame with timestamp text added (or unchanged if show_timestamp is False)
         """
+        # Skip timestamp rendering if show_timestamp is False
+        if not self.show_timestamp:
+            return frame
+
         timestamp_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
         # Use font manager to render text
         return self.font_manager.render_text(
@@ -265,7 +271,8 @@ class VideoGenerator:
             font_scale=1.0,
             title_text="",
             text_align="left",
-            font_file=None
+            font_file=None,
+            show_timestamp=True
         )
 
         # Initialize captioner
@@ -277,7 +284,8 @@ class VideoGenerator:
             title_text=default_text_config.title_text if text_config is None else text_config.title_text,
             text_align=default_text_config.text_align if text_config is None else text_config.text_align,
             captions_file=captions_file,
-            font_file=default_text_config.font_file if text_config is None else text_config.font_file
+            font_file=default_text_config.font_file if text_config is None else text_config.font_file,
+            show_timestamp=default_text_config.show_timestamp if text_config is None else text_config.show_timestamp
         )
 
         # Cache for interpolated positions

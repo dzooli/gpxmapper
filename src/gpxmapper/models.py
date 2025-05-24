@@ -87,6 +87,7 @@ class TextConfig:
     text_align: str = "left"
     timestamp_color: Tuple[int, int, int] = (0, 0, 0)
     font_file: Optional[str] = None
+    show_timestamp: bool = True
 
 
 @dataclass
