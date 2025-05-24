@@ -11,8 +11,10 @@ import csv
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import concurrent.futures
+import pytz
+from tzlocal import get_localzone
 
 import cv2
 import numpy as np
@@ -30,7 +32,7 @@ class VideoCaptioner:
     def __init__(self, width: int, height: int, timestamp_color: Tuple[int, int, int] = (0,0,0),
                  font_scale: float = 0.7, title_text: str = "", text_align: str = "left",
                  captions_file: str = "", font_file: str = "", show_timestamp: bool = True,
-                 scrolling_text_file: str = None, scrolling_speed: float = None):
+                 scrolling_text_file: str = None, scrolling_speed: float = None, timezone: str = None):
         """Initialize the video captioner.
 
         Args:
@@ -45,6 +47,8 @@ class VideoCaptioner:
             show_timestamp: Whether to display timestamps on the video (default: True)
             scrolling_text_file: Optional path to a text file containing content to be scrolled on the video
             scrolling_speed: Optional speed at which the text scrolls across the video (pixels per frame)
+            timezone: Optional timezone to convert timestamps to (e.g., 'Europe/London', 'US/Pacific')
+                     If None, timestamps are not converted. Use 'local' for the local timezone.
         """
         self.width = width
         self.height = height
@@ -61,6 +65,7 @@ class VideoCaptioner:
         self.scrolling_position = self.width  # Start from the right edge of the frame
         self.scrolling_text_width = 0
         self.video_duration = None  # Will be set later
+        self.timezone = timezone
 
         # Initialize font manager
         self.font_manager = FontManager(font_file, font_scale)
@@ -78,7 +83,7 @@ class VideoCaptioner:
 
         Args:
             frame: The frame to add the timestamp to
-            timestamp: The timestamp to display
+            timestamp: The timestamp to display (in UTC)
 
         Returns:
             The frame with timestamp text added (or unchanged if show_timestamp is False)
@@ -87,7 +92,30 @@ class VideoCaptioner:
         if not self.show_timestamp:
             return frame
 
-        timestamp_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        # Convert timestamp to the specified timezone if needed
+        display_timestamp = timestamp
+        if self.timezone:
+            # Ensure the timestamp has UTC timezone info
+            if timestamp.tzinfo is None:
+                utc_timestamp = pytz.utc.localize(timestamp)
+            else:
+                utc_timestamp = timestamp
+
+            # Convert to the specified timezone
+            if self.timezone.lower() == 'local':
+                # Use the local timezone of the machine
+                local_tz = get_localzone()
+                display_timestamp = utc_timestamp.astimezone(local_tz)
+            else:
+                try:
+                    # Use the specified timezone
+                    target_tz = pytz.timezone(self.timezone)
+                    display_timestamp = utc_timestamp.astimezone(target_tz)
+                except pytz.exceptions.UnknownTimeZoneError:
+                    logger.warning(f"Unknown timezone: {self.timezone}. Using UTC.")
+                    display_timestamp = utc_timestamp
+
+        timestamp_str = display_timestamp.strftime("%Y-%m-%d %H:%M:%S")
         # Use font manager to render text
         return self.font_manager.render_text(
             frame, timestamp_str, (10, self.height - 20),
@@ -365,7 +393,8 @@ class VideoGenerator:
             font_file=None,
             show_timestamp=True,
             scrolling_text_file=None,
-            scrolling_speed=None
+            scrolling_speed=None,
+            timezone=None
         )
 
         # Initialize captioner
@@ -380,7 +409,8 @@ class VideoGenerator:
             font_file=default_text_config.font_file if text_config is None else text_config.font_file,
             show_timestamp=default_text_config.show_timestamp if text_config is None else text_config.show_timestamp,
             scrolling_text_file=default_text_config.scrolling_text_file if text_config is None else text_config.scrolling_text_file,
-            scrolling_speed=default_text_config.scrolling_speed if text_config is None else text_config.scrolling_speed
+            scrolling_speed=default_text_config.scrolling_speed if text_config is None else text_config.scrolling_speed,
+            timezone=default_text_config.timezone if text_config is None else text_config.timezone
         )
 
         # Cache for interpolated positions

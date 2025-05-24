@@ -161,6 +161,7 @@ gpxmapper.exe info path\to\your\file.gpx
 - `--no-timestamp`: Disable timestamp visualization in the video
 - `--scrolling-text`, `-st`: Path to a text file containing content to be scrolled on the video
 - `--scrolling-speed`, `-ss`: Speed at which the text scrolls across the video (pixels per frame). If not specified, speed will be calculated based on video duration.
+- `--timezone`, `-tz`: Timezone to convert timestamps to (e.g., 'Europe/London', 'US/Pacific'). If not specified, timestamps are not converted. Use 'local' to convert to the local timezone of the machine.
 
 Note: The timestamp color is fixed to black (0,0,0) in the command-line interface but can be customized when using the library programmatically.
 
@@ -232,7 +233,8 @@ text_config = TextConfig(
     font_file="path/to/custom_font.ttf",  # Custom TrueType font
     show_timestamp=True,  # Set to False to disable timestamp display
     scrolling_text_file="path/to/scrolling.txt",  # Text file with scrolling content
-    scrolling_speed=2.5  # Speed in pixels per frame (optional)
+    scrolling_speed=2.5,  # Speed in pixels per frame (optional)
+    timezone="Europe/London"  # Convert timestamps to London time (optional)
 )
 
 # Generate video
@@ -391,6 +393,30 @@ gpxmapper generate my_run.gpx --scrolling-text scrolling.txt --scrolling-speed 2
 For Windows executable:
 ```cmd
 gpxmapper.exe generate my_run.gpx --scrolling-text scrolling.txt --scrolling-speed 2.5
+```
+
+### Convert timestamps to a specific timezone
+
+For Python installation:
+```bash
+gpxmapper generate my_run.gpx --timezone Europe/London
+```
+
+For Windows executable:
+```cmd
+gpxmapper.exe generate my_run.gpx --timezone Europe/London
+```
+
+You can also use the local timezone of your machine:
+
+For Python installation:
+```bash
+gpxmapper generate my_run.gpx --timezone local
+```
+
+For Windows executable:
+```cmd
+gpxmapper.exe generate my_run.gpx --timezone local
 ```
 
 ### Clear the map tiles cache

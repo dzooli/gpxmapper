@@ -126,6 +126,13 @@ def generate(
         min=0.1,
         help="Speed at which the text scrolls across the video (pixels per frame). If not specified, speed will be calculated based on video duration."
     ),
+    timezone: Optional[str] = typer.Option(
+        None,
+        "--timezone", "-tz",
+        help="Timezone to convert timestamps to (e.g., 'Europe/London', 'US/Pacific'). "
+             "If not specified, timestamps are not converted. "
+             "Use 'local' to convert to the local timezone of the machine."
+    ),
 ):
     """Generate a video from a GPX track file.
 
@@ -153,7 +160,8 @@ def generate(
             font_file=str(font_file) if font_file else None,
             no_timestamp=no_timestamp,
             scrolling_text_file=str(scrolling_text) if scrolling_text else None,
-            scrolling_speed=scrolling_speed
+            scrolling_speed=scrolling_speed,
+            timezone=timezone
         )
 
         video_config = VideoConfig(

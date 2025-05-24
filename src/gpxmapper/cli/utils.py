@@ -21,7 +21,8 @@ def create_text_config(
     font_file: Optional[str] = None,
     no_timestamp: bool = False,
     scrolling_text_file: Optional[str] = None,
-    scrolling_speed: Optional[float] = None
+    scrolling_speed: Optional[float] = None,
+    timezone: Optional[str] = None
 ) -> TextConfig:
     """Create a TextConfig object from the given parameters.
 
@@ -34,6 +35,8 @@ def create_text_config(
         no_timestamp: Whether to disable timestamp visualization
         scrolling_text_file: Optional path to a text file containing content to be scrolled on the video
         scrolling_speed: Optional speed at which the text scrolls across the video (pixels per frame)
+        timezone: Optional timezone to convert timestamps to (e.g., 'Europe/London', 'US/Pacific')
+                 If None, timestamps are not converted. Default is None.
 
     Returns:
         TextConfig object
@@ -63,7 +66,8 @@ def create_text_config(
         font_file=font_file,
         show_timestamp=not no_timestamp,
         scrolling_text_file=scrolling_text_file,
-        scrolling_speed=scrolling_speed
+        scrolling_speed=scrolling_speed,
+        timezone=timezone
     )
 
 def generate_video(

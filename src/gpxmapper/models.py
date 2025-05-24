@@ -90,6 +90,7 @@ class TextConfig:
     show_timestamp: bool = True
     scrolling_text_file: Optional[str] = None
     scrolling_speed: Optional[float] = None
+    timezone: Optional[str] = None
 
 
 @dataclass
