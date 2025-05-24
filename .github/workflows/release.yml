@@ -29,7 +29,7 @@ jobs:
       run: |
         git config --global user.name "${{ github.repository_owner }}"
         git config --global user.email "${{ github.repository_owner }}@users.noreply.github.com"
-        cz bump --yes --tag
+        cz bump --yes --tag-format "$version"
         $version = python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['project']['version'])"
         echo "version=$version" >> $env:GITHUB_OUTPUT
       shell: pwsh

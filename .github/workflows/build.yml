@@ -1,0 +1,45 @@
+name: Build Windows Executable
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv-sync
+      uses: fikra-tech/uv-sync@v1
+      with:
+        python-version: '3.12'
+        uv-version: 'latest'
+        extra-args: '--all-packages --dev'
+
+    - name: Build executable
+      run: |
+        python build_exe.py
+
+    - name: Create build zip
+      run: |
+        $releaseDir = "release"
+        New-Item -ItemType Directory -Path $releaseDir -Force
+        Copy-Item "dist\gpxmapper.exe" -Destination "$releaseDir\"
+        Copy-Item "README.md" -Destination "$releaseDir\"
+        Copy-Item "LICENSE" -Destination "$releaseDir\"
+        Copy-Item "CHANGELOG.md" -Destination "$releaseDir\"
+        $zipName = "gpxmapper-build.zip"
+        Compress-Archive -Path "$releaseDir\*" -DestinationPath $zipName
+        echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
+      shell: pwsh
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: gpxmapper-build
+        path: ${{ env.ZIP_NAME }}
+        retention-days: 7
