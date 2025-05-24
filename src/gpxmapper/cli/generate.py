@@ -111,6 +111,21 @@ def generate(
         dir_okay=False,
         readable=True
     ),
+    scrolling_text: Optional[Path] = typer.Option(
+        None,
+        "--scrolling-text", "-st",
+        help="Path to a text file containing content to be scrolled on the video",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True
+    ),
+    scrolling_speed: Optional[float] = typer.Option(
+        None,
+        "--scrolling-speed", "-ss",
+        min=0.1,
+        help="Speed at which the text scrolls across the video (pixels per frame). If not specified, speed will be calculated based on video duration."
+    ),
 ):
     """Generate a video from a GPX track file.
 
@@ -136,7 +151,9 @@ def generate(
             title_text=title_text,
             text_align=text_align,
             font_file=str(font_file) if font_file else None,
-            no_timestamp=no_timestamp
+            no_timestamp=no_timestamp,
+            scrolling_text_file=str(scrolling_text) if scrolling_text else None,
+            scrolling_speed=scrolling_speed
         )
 
         video_config = VideoConfig(

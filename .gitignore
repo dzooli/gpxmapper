@@ -151,6 +151,7 @@ __pypackages__/
 *.mp4
 *.avi
 *.ttf
+*.txt
 *.*dll
 
 

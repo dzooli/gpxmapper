@@ -29,7 +29,8 @@ class VideoCaptioner:
 
     def __init__(self, width: int, height: int, timestamp_color: Tuple[int, int, int] = (0,0,0),
                  font_scale: float = 0.7, title_text: str = "", text_align: str = "left",
-                 captions_file: str = "", font_file: str = "", show_timestamp: bool = True):
+                 captions_file: str = "", font_file: str = "", show_timestamp: bool = True,
+                 scrolling_text_file: str = None, scrolling_speed: float = None):
         """Initialize the video captioner.
 
         Args:
@@ -42,6 +43,8 @@ class VideoCaptioner:
             captions_file: Optional path to a CSV file containing captions with timestamps
             font_file: Optional path to a TrueType font file (.ttf) for text rendering
             show_timestamp: Whether to display timestamps on the video (default: True)
+            scrolling_text_file: Optional path to a text file containing content to be scrolled on the video
+            scrolling_speed: Optional speed at which the text scrolls across the video (pixels per frame)
         """
         self.width = width
         self.height = height
@@ -53,6 +56,11 @@ class VideoCaptioner:
         self.sorted_caption_timestamps = []
         self.video_start_time = None
         self.show_timestamp = show_timestamp
+        self.scrolling_text = ""
+        self.scrolling_speed = scrolling_speed
+        self.scrolling_position = self.width  # Start from the right edge of the frame
+        self.scrolling_text_width = 0
+        self.video_duration = None  # Will be set later
 
         # Initialize font manager
         self.font_manager = FontManager(font_file, font_scale)
@@ -60,6 +68,10 @@ class VideoCaptioner:
         # Load captions if a file is provided
         if captions_file:
             self.load_captions(captions_file)
+
+        # Load scrolling text if a file is provided
+        if scrolling_text_file:
+            self.load_scrolling_text(scrolling_text_file)
 
     def add_timestamp_to_frame(self, frame: np.ndarray, timestamp: datetime) -> np.ndarray:
         """Add timestamp text to the frame.
@@ -91,6 +103,47 @@ class VideoCaptioner:
             start_time: The start time of the video
         """
         self.video_start_time = start_time
+
+    def set_video_duration(self, duration_seconds: int, fps: int) -> None:
+        """Set the duration of the video and calculate scrolling speed if not provided.
+
+        Args:
+            duration_seconds: Duration of the video in seconds
+            fps: Frames per second of the video
+        """
+        self.video_duration = duration_seconds
+
+        # Calculate scrolling speed if not provided
+        if self.scrolling_text and self.scrolling_speed is None:
+            # Calculate a speed that allows the text to be read
+            # The text should take about 75% of the video duration to scroll across the screen
+            total_distance = self.width + self.scrolling_text_width
+            total_frames = duration_seconds * fps * 0.75
+            self.scrolling_speed = total_distance / total_frames
+            logger.info(f"Calculated scrolling speed: {self.scrolling_speed:.2f} pixels per frame")
+
+    def load_scrolling_text(self, scrolling_text_file: str) -> None:
+        """Load scrolling text from a text file.
+
+        The file content will be treated as one long string, even if it contains newlines.
+
+        Args:
+            scrolling_text_file: Path to the text file containing scrolling text
+        """
+        try:
+            with open(scrolling_text_file, 'r', encoding='utf-8') as f:
+                # Read the entire file content and replace newlines with spaces
+                self.scrolling_text = ' '.join(line.strip() for line in f)
+
+                # Calculate the width of the text
+                thickness = 2
+                (text_width, _), _ = self.font_manager.get_text_size(self.scrolling_text, thickness)
+                self.scrolling_text_width = text_width
+
+                logger.info(f"Loaded scrolling text from {scrolling_text_file} ({len(self.scrolling_text)} characters, {text_width} pixels wide)")
+        except Exception as e:
+            logger.error(f"Error loading scrolling text file: {e}")
+            self.scrolling_text = ""
 
     def load_captions(self, captions_file: str) -> None:
         """Load captions from a CSV file.
@@ -205,6 +258,44 @@ class VideoCaptioner:
             self.timestamp_color, thickness
         )
 
+    def add_scrolling_text_to_frame(self, frame: np.ndarray, frame_idx: int) -> np.ndarray:
+        """Add scrolling text to the frame if provided.
+
+        Args:
+            frame: The frame to add the scrolling text to
+            frame_idx: Index of the current frame
+
+        Returns:
+            The frame with scrolling text added
+        """
+        if not self.scrolling_text or self.scrolling_speed is None:
+            return frame
+
+        # Calculate current position of the text
+        self.scrolling_position = self.width - (frame_idx * self.scrolling_speed)
+
+        # If the text has completely scrolled off the left side, don't render it
+        if self.scrolling_position < -self.scrolling_text_width:
+            return frame
+
+        thickness = 2
+        (_, text_height), _ = self.font_manager.get_text_size(self.scrolling_text, thickness)
+
+        # Calculate y position based on whether timestamp is shown
+        margin = 10
+        if self.show_timestamp:
+            # Position above timestamp with margin
+            y_pos = self.height - text_height - margin * 3
+        else:
+            # Position at bottom of frame where timestamp would be
+            y_pos = self.height - 20  # Same position as timestamp
+
+        # Draw the scrolling text
+        return self.font_manager.render_text(
+            frame, self.scrolling_text, (int(self.scrolling_position), int(y_pos)),
+            self.timestamp_color, thickness
+        )
+
     def add_title_to_frame(self, frame: np.ndarray) -> np.ndarray:
         """Add title text to the frame if provided.
 
@@ -272,7 +363,9 @@ class VideoGenerator:
             title_text="",
             text_align="left",
             font_file=None,
-            show_timestamp=True
+            show_timestamp=True,
+            scrolling_text_file=None,
+            scrolling_speed=None
         )
 
         # Initialize captioner
@@ -285,7 +378,9 @@ class VideoGenerator:
             text_align=default_text_config.text_align if text_config is None else text_config.text_align,
             captions_file=captions_file,
             font_file=default_text_config.font_file if text_config is None else text_config.font_file,
-            show_timestamp=default_text_config.show_timestamp if text_config is None else text_config.show_timestamp
+            show_timestamp=default_text_config.show_timestamp if text_config is None else text_config.show_timestamp,
+            scrolling_text_file=default_text_config.scrolling_text_file if text_config is None else text_config.scrolling_text_file,
+            scrolling_speed=default_text_config.scrolling_speed if text_config is None else text_config.scrolling_speed
         )
 
         # Cache for interpolated positions
@@ -436,10 +531,11 @@ class VideoGenerator:
             # Convert from RGB to BGR (OpenCV uses BGR)
             frame = cv2.cvtColor(map_array, cv2.COLOR_RGB2BGR)
 
-        # Add timestamp, title, and caption using the captioner
+        # Add timestamp, title, caption, and scrolling text using the captioner
         frame = self.captioner.add_timestamp_to_frame(frame, frame_timestamp)
         frame = self.captioner.add_title_to_frame(frame)
         frame = self.captioner.add_caption_to_frame(frame, frame_seconds)
+        frame = self.captioner.add_scrolling_text_to_frame(frame, frame_idx)
 
         return frame
 
@@ -468,8 +564,9 @@ class VideoGenerator:
             start_time: Start time of the track
             total_track_seconds: Total duration of the track in seconds
         """
-        # Set the video start time in the captioner
+        # Set the video start time and duration in the captioner
         self.captioner.set_video_start_time(start_time)
+        self.captioner.set_video_duration(duration_seconds, self.fps)
 
         # Calculate total number of frames
         total_frames = duration_seconds * self.fps

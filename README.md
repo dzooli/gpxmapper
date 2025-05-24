@@ -14,6 +14,7 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 - Match GPX timeline to video duration
 - Add custom title text to videos
 - Include timed captions from CSV files
+- Add scrolling text from a text file with customizable speed
 - Customize text alignment and font scale
 - Customize the font of text overlays (TTF only)
 - Cache map tiles for faster rendering
@@ -158,6 +159,8 @@ gpxmapper.exe info path\to\your\file.gpx
 - `--captions`: Path to a CSV file containing captions with timestamps in HH:MM:SS format (relative to the start of the video)
 - `--font`, `-ff`: Path to a TrueType font file (.ttf) for text rendering
 - `--no-timestamp`: Disable timestamp visualization in the video
+- `--scrolling-text`, `-st`: Path to a text file containing content to be scrolled on the video
+- `--scrolling-speed`, `-ss`: Speed at which the text scrolls across the video (pixels per frame). If not specified, speed will be calculated based on video duration.
 
 Note: The timestamp color is fixed to black (0,0,0) in the command-line interface but can be customized when using the library programmatically.
 
@@ -227,7 +230,9 @@ text_config = TextConfig(
     text_align="center",
     timestamp_color=(255, 255, 255),  # White color for timestamp
     font_file="path/to/custom_font.ttf",  # Custom TrueType font
-    show_timestamp=True  # Set to False to disable timestamp display
+    show_timestamp=True,  # Set to False to disable timestamp display
+    scrolling_text_file="path/to/scrolling.txt",  # Text file with scrolling content
+    scrolling_speed=2.5  # Speed in pixels per frame (optional)
 )
 
 # Generate video
@@ -355,6 +360,37 @@ gpxmapper generate my_run.gpx --captions captions.csv
 For Windows executable:
 ```cmd
 gpxmapper.exe generate my_run.gpx --captions captions.csv
+```
+
+### Add scrolling text to the video
+
+First, create a text file with your scrolling content (e.g., `scrolling.txt`):
+```
+This is a scrolling text that will appear at the bottom of the video.
+```
+
+Then, use the `--scrolling-text` option:
+
+For Python installation:
+```bash
+gpxmapper generate my_run.gpx --scrolling-text scrolling.txt
+```
+
+For Windows executable:
+```cmd
+gpxmapper.exe generate my_run.gpx --scrolling-text scrolling.txt
+```
+
+You can also specify the scrolling speed:
+
+For Python installation:
+```bash
+gpxmapper generate my_run.gpx --scrolling-text scrolling.txt --scrolling-speed 2.5
+```
+
+For Windows executable:
+```cmd
+gpxmapper.exe generate my_run.gpx --scrolling-text scrolling.txt --scrolling-speed 2.5
 ```
 
 ### Clear the map tiles cache

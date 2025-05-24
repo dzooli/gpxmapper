@@ -19,7 +19,9 @@ def create_text_config(
     text_align: str = "left",
     timestamp_color: str = "0,0,0",
     font_file: Optional[str] = None,
-    no_timestamp: bool = False
+    no_timestamp: bool = False,
+    scrolling_text_file: Optional[str] = None,
+    scrolling_speed: Optional[float] = None
 ) -> TextConfig:
     """Create a TextConfig object from the given parameters.
 
@@ -30,6 +32,8 @@ def create_text_config(
         timestamp_color: Color of the timestamp text as R,G,B (e.g., '0,0,0' for black)
         font_file: Optional path to a TrueType font file (.ttf) for text rendering
         no_timestamp: Whether to disable timestamp visualization
+        scrolling_text_file: Optional path to a text file containing content to be scrolled on the video
+        scrolling_speed: Optional speed at which the text scrolls across the video (pixels per frame)
 
     Returns:
         TextConfig object
@@ -57,7 +61,9 @@ def create_text_config(
         text_align=text_align,
         timestamp_color=timestamp_color_tuple,
         font_file=font_file,
-        show_timestamp=not no_timestamp
+        show_timestamp=not no_timestamp,
+        scrolling_text_file=scrolling_text_file,
+        scrolling_speed=scrolling_speed
     )
 
 def generate_video(
