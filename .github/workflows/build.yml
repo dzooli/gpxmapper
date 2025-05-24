@@ -2,7 +2,7 @@ name: Build Windows Executable
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
@@ -42,4 +42,4 @@ jobs:
       with:
         name: gpxmapper-build
         path: ${{ env.ZIP_NAME }}
-        retention-days: 7
+        retention-days: 1
