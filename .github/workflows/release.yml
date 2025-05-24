@@ -22,17 +22,24 @@ jobs:
       with:
         python-version: '3.12'
         uv-version: 'latest'
-        extra-args: '--all-packages --dev -U'
+        extra-args: '--all-packages --dev'
 
     - name: Bump version with commitizen
       id: cz
       run: |
         git config --global user.name "${{ github.repository_owner }}"
         git config --global user.email "${{ github.repository_owner }}@users.noreply.github.com"
-        cz bump --yes
+        cz bump --yes --tag
         $version = python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['project']['version'])"
         echo "version=$version" >> $env:GITHUB_OUTPUT
       shell: pwsh
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Push changes and tags
+      run: |
+        git push
+        git push --tags
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
