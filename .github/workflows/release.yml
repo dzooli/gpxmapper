@@ -7,7 +7,6 @@ on:
 
 jobs:
   release:
-    needs: build
     permissions:
       contents: write  # Needed for creating releases and pushing tags
     runs-on: windows-latest
