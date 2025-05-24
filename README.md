@@ -1,6 +1,6 @@
 # GPX Mapper
 
-[![Build and Release](https://github.com/dzooli/gpxmapper/actions/workflows/release.yml/badge.svg)](https://github.com/dzooli/gpxmapper/actions/workflows/release.yml)
+[![Build and Release](https://github.com/dzooli/gpxmapper/actions/workflows/release.yml/badge.svg)](https://github.com/dzooli/gpxmapper/actions/workflows/release.yml) [![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=dzooli_gpxmapper)](https://sonarcloud.io/summary/new_code?id=dzooli_gpxmapper)
 
 A command-line tool that generates videos from GPX tracks, showing the route on a map with a marker indicating the current position.
 
