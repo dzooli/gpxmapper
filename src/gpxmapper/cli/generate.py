@@ -129,9 +129,8 @@ def generate(
     timezone: Optional[str] = typer.Option(
         None,
         "--timezone", "-tz",
-        help="Timezone to convert timestamps to (e.g., 'Europe/London', 'US/Pacific'). "
-             "If not specified, timestamps are not converted. "
-             "Use 'local' to convert to the local timezone of the machine."
+        help="Timezone to convert timestamps to. Must be a full timezone name (e.g., 'Europe/Budapest', 'US/Pacific'). "
+             "If not specified, timestamps are not converted."
     ),
 ):
     """Generate a video from a GPX track file.

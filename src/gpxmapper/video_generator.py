@@ -13,8 +13,7 @@ import os
 from datetime import datetime, timedelta
 from typing import List, Tuple, Optional
 import concurrent.futures
-import pytz
-from tzlocal import get_localzone
+import zoneinfo
 
 import cv2
 import numpy as np
@@ -47,8 +46,8 @@ class VideoCaptioner:
             show_timestamp: Whether to display timestamps on the video (default: True)
             scrolling_text_file: Optional path to a text file containing content to be scrolled on the video
             scrolling_speed: Optional speed at which the text scrolls across the video (pixels per frame)
-            timezone: Optional timezone to convert timestamps to (e.g., 'Europe/London', 'US/Pacific')
-                     If None, timestamps are not converted. Use 'local' for the local timezone.
+            timezone: Optional timezone to convert timestamps to. Must be a full timezone name (e.g., 'Europe/Budapest', 'US/Pacific')
+                     If None, timestamps are not converted.
         """
         self.width = width
         self.height = height
@@ -97,23 +96,18 @@ class VideoCaptioner:
         if self.timezone:
             # Ensure the timestamp has UTC timezone info
             if timestamp.tzinfo is None:
-                utc_timestamp = pytz.utc.localize(timestamp)
+                utc_timestamp = timestamp.replace(tzinfo=zoneinfo.ZoneInfo("UTC"))
             else:
                 utc_timestamp = timestamp
 
             # Convert to the specified timezone
-            if self.timezone.lower() == 'local':
-                # Use the local timezone of the machine
-                local_tz = get_localzone()
-                display_timestamp = utc_timestamp.astimezone(local_tz)
-            else:
-                try:
-                    # Use the specified timezone
-                    target_tz = pytz.timezone(self.timezone)
-                    display_timestamp = utc_timestamp.astimezone(target_tz)
-                except pytz.exceptions.UnknownTimeZoneError:
-                    logger.warning(f"Unknown timezone: {self.timezone}. Using UTC.")
-                    display_timestamp = utc_timestamp
+            try:
+                # Use the specified timezone
+                target_tz = zoneinfo.ZoneInfo(self.timezone)
+                display_timestamp = utc_timestamp.astimezone(target_tz)
+            except zoneinfo.ZoneInfoNotFoundError:
+                logger.warning(f"Unknown timezone: {self.timezone}. Using UTC.")
+                display_timestamp = utc_timestamp
 
         timestamp_str = display_timestamp.strftime("%Y-%m-%d %H:%M:%S")
         # Use font manager to render text
