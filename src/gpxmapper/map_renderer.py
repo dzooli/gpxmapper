@@ -71,6 +71,110 @@ class MapRenderer:
     # Cache for 2^zoom values to avoid repeated calculations
     _zoom_cache = {}
 
+    # ---------- Shared helper methods to reduce duplication ----------
+    def build_tile_url(self, x: int, y: int, zoom: int) -> str:
+        """Build a tile URL from template."""
+        return self.tile_server.replace("{x}", str(x)).replace("{y}", str(y)).replace("{z}", str(zoom))
+
+    @staticmethod
+    def ensure_rgb(image: Image.Image) -> Image.Image:
+        """Ensure image is in RGB mode."""
+        if image.mode != 'RGB':
+            return image.convert('RGB')
+        return image
+
+    def open_cached_image(self, x: int, y: int, zoom: int) -> Optional[Image.Image]:
+        """Try to open a cached tile image and return it, or None."""
+        if not self.use_cache:
+            return None
+        tile_path = self.get_tile_path(x, y, zoom)
+        if not tile_path:
+            return None
+        try:
+            img = Image.open(tile_path)
+            return self.ensure_rgb(img)
+        except Exception as e:
+            logger.warning(f"Failed to load cached tile: {e}")
+            return None
+
+    def cache_image(self, x: int, y: int, zoom: int, image: Image.Image) -> None:
+        """Cache the given tile image if caching is enabled."""
+        if self.use_cache and self.cache_dir:
+            logger.info(f"Caching tile {x},{y} at zoom {zoom}")
+            tile_path = os.path.join(self.cache_dir, f"{zoom}_{x}_{y}.png")
+            image.save(tile_path)
+
+    def build_tile_coords(self, min_x: int, max_x: int, min_y: int, max_y: int, zoom: int) -> List[tuple]:
+        """Build list of (x,y,zoom) tile coordinates for the given tile bounds."""
+        coords = []
+        for x in range(min_x, max_x + 1):
+            for y in range(min_y, max_y + 1):
+                coords.append((x, y, zoom))
+        return coords
+
+    def build_tile_coords_for_bounds(self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int) -> List[tuple]:
+        """Build tile coords for geographic bounds."""
+        min_x, max_y = self.deg2num(min_lat, min_lon, zoom)
+        max_x, min_y = self.deg2num(max_lat, max_lon, zoom)
+        return self.build_tile_coords(min_x, max_x, min_y, max_y, zoom)
+
+    def paste_tiles_to_composite(self, composite: Image.Image, min_x: int, min_y: int, max_x: int, max_y: int, zoom: int, tile_lookup: dict) -> None:
+        """Paste tiles from tile_lookup onto composite image, filling blanks if missing."""
+        for x in range(min_x, max_x + 1):
+            for y in range(min_y, max_y + 1):
+                tile = tile_lookup.get((x, y))
+                if tile and tile.image:
+                    pos_x = (x - min_x) * 256
+                    pos_y = (y - min_y) * 256
+                    composite.paste(tile.image, (pos_x, pos_y))
+                else:
+                    logger.warning(f"Missing tile at {x},{y}, zoom {zoom}")
+                    blank_tile = Image.new('RGB', (256, 256), (200, 200, 200))
+                    pos_x = (x - min_x) * 256
+                    pos_y = (y - min_y) * 256
+                    composite.paste(blank_tile, (pos_x, pos_y))
+
+    def compute_composite_geometry(self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int):
+        """Compute min/max tile bounds and composite dimensions for given geographic bounds.
+
+        Returns:
+            Tuple (min_tile, max_tile, dimensions) of Points.
+        """
+        from .models import GeoPoint, Point
+
+        # Create GeoPoint objects for the bounds
+        min_geo = GeoPoint(lat=min_lat, lon=min_lon)
+        max_geo = GeoPoint(lat=max_lat, lon=max_lon)
+
+        # Get tile coordinates for the bounding box
+        min_tile_coords = self.deg2num(min_geo.lat, min_geo.lon, zoom)
+        max_tile_coords = self.deg2num(max_geo.lat, max_geo.lon, zoom)
+
+        # Create Point objects for the tile bounds
+        min_tile = Point(x=min_tile_coords[0], y=max_tile_coords[1])  # y swapped due to tile coordinate system
+        max_tile = Point(x=max_tile_coords[0], y=min_tile_coords[1])  # y swapped due to tile coordinate system
+
+        # Calculate the size of the composite image
+        dimensions = Point(
+            x=(max_tile.x - min_tile.x + 1) * 256,
+            y=(max_tile.y - min_tile.y + 1) * 256
+        )
+
+        return min_tile, max_tile, dimensions
+
+    def set_composite_info(self, min_tile, max_tile, zoom: int, dimensions, composite: Image.Image) -> None:
+        """Store the composite image and its metadata on this renderer instance."""
+        self.composite_map = composite
+        self.composite_map_info = {
+            'min_x': min_tile.x,
+            'min_y': min_tile.y,
+            'max_x': max_tile.x,
+            'max_y': max_tile.y,
+            'zoom': zoom,
+            'width': dimensions.x,
+            'height': dimensions.y
+        }
+
     @classmethod
     def deg2num(cls, lat_deg: float, lon_deg: float, zoom: int) -> Tuple[int, int]:
         """Convert latitude and longitude to tile coordinates.
@@ -175,36 +279,22 @@ class MapRenderer:
             MapTile object or None if fetching failed
         """
         # Check cache first if caching is enabled
-        if self.use_cache:
-            tile_path = self.get_tile_path(x, y, zoom)
-            if tile_path:
-                try:
-                    image = Image.open(tile_path)
-                    # Convert to RGB mode to ensure full color support
-                    if image.mode != 'RGB':
-                        image = image.convert('RGB')
-                    return MapTile(x, y, zoom, image)
-                except Exception as e:
-                    logger.warning(f"Failed to load cached tile: {e}")
+        cached = self.open_cached_image(x, y, zoom)
+        if cached is not None:
+            return MapTile(x, y, zoom, cached)
 
         # Fetch from server
-        url = self.tile_server.replace("{x}", str(x)).replace("{y}", str(y)).replace("{z}", str(zoom))
+        url = self.build_tile_url(x, y, zoom)
 
         try:
             response = requests.get(url, headers={"User-Agent": "gpxmapper/0.1.0"})
             response.raise_for_status()
 
             image = Image.open(io.BytesIO(response.content))
-
-            # Convert to RGB mode to ensure full color support
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
+            image = self.ensure_rgb(image)
 
             # Cache the tile if caching is enabled and cache_dir is set
-            if self.use_cache and self.cache_dir:
-                logger.info(f"Caching tile {x},{y} at zoom {zoom}")
-                tile_path = os.path.join(self.cache_dir, f"{zoom}_{x}_{y}.png")
-                image.save(tile_path)
+            self.cache_image(x, y, zoom, image)
 
             return MapTile(x, y, zoom, image)
 
@@ -213,7 +303,7 @@ class MapRenderer:
             return None
 
     def get_tiles_for_bounds(self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, 
-                            zoom: int) -> List[MapTile]:
+                           zoom: int) -> List[MapTile]:
         """Get all tiles needed to cover the given geographic bounds.
 
         Args:
@@ -226,14 +316,7 @@ class MapRenderer:
         Returns:
             List of MapTile objects
         """
-        min_x, max_y = self.deg2num(min_lat, min_lon, zoom)
-        max_x, min_y = self.deg2num(max_lat, max_lon, zoom)
-
-        # Create a list of all tile coordinates to fetch
-        tile_coords = []
-        for x in range(min_x, max_x + 1):
-            for y in range(min_y, max_y + 1):
-                tile_coords.append((x, y, zoom))
+        tile_coords = self.build_tile_coords_for_bounds(min_lat, min_lon, max_lat, max_lon, zoom)
 
         # Fetch tiles in parallel
         tiles = []
@@ -294,10 +377,7 @@ class MapRenderer:
         composite = Image.new('RGB', (dimensions.x, dimensions.y))
 
         # Create a list of all tile coordinates to fetch
-        tile_coords = []
-        for x in range(min_tile.x, max_tile.x + 1):
-            for y in range(min_tile.y, max_tile.y + 1):
-                tile_coords.append((x, y, zoom))
+        tile_coords = self.build_tile_coords(min_tile.x, max_tile.x, min_tile.y, max_tile.y, zoom)
 
         # Fetch tiles in parallel
         tile_dict = {}  # Dictionary to store tiles by coordinates
@@ -313,25 +393,7 @@ class MapRenderer:
                     tile_dict[(tile.x, tile.y)] = tile
 
         # Place all tiles on the composite image
-        for x in range(min_tile.x, max_tile.x + 1):
-            for y in range(min_tile.y, max_tile.y + 1):
-                tile = tile_dict.get((x, y))
-                if tile and tile.image:
-                    # Calculate position in the composite image
-                    pos = Point(
-                        x=(x - min_tile.x) * 256,
-                        y=(y - min_tile.y) * 256
-                    )
-                    composite.paste(tile.image, (pos.x, pos.y))
-                else:
-                    # If tile is missing, create a blank tile
-                    logger.warning(f"Missing tile at {x},{y}, zoom {zoom}")
-                    blank_tile = Image.new('RGB', (256, 256), (200, 200, 200))
-                    pos = Point(
-                        x=(x - min_tile.x) * 256,
-                        y=(y - min_tile.y) * 256
-                    )
-                    composite.paste(blank_tile, (pos.x, pos.y))
+        self.paste_tiles_to_composite(composite, min_tile.x, min_tile.y, max_tile.x, max_tile.y, zoom, tile_dict)
 
         # Store the composite map and its metadata
         self.composite_map = composite
@@ -444,26 +506,26 @@ class MapRenderer:
             y=global_pixel.y - min_tile.y * 256
         )
 
-        # Calculate the crop box
-        crop_box = Rectangle(
-            left=max(0, map_pixel.x - frame_width // 2),
-            top=max(0, map_pixel.y - frame_height // 2),
-            right=min(self.composite_map_info['width'], max(0, map_pixel.x - frame_width // 2) + frame_width),
-            bottom=min(self.composite_map_info['height'], max(0, map_pixel.y - frame_height // 2) + frame_height)
-        )
+        # Calculate the crop box using local variables to avoid mutating a frozen Rectangle
+        left = max(0, map_pixel.x - frame_width // 2)
+        top = max(0, map_pixel.y - frame_height // 2)
+        right = min(self.composite_map_info['width'], left + frame_width)
+        bottom = min(self.composite_map_info['height'], top + frame_height)
 
         # Adjust if we hit the edge of the composite map
-        if crop_box.width < frame_width:
-            if crop_box.left == 0:
-                crop_box.right = min(self.composite_map_info['width'], frame_width)
+        if (right - left) < frame_width:
+            if left == 0:
+                right = min(self.composite_map_info['width'], frame_width)
             else:
-                crop_box.left = max(0, crop_box.right - frame_width)
+                left = max(0, right - frame_width)
 
-        if crop_box.height < frame_height:
-            if crop_box.top == 0:
-                crop_box.bottom = min(self.composite_map_info['height'], frame_height)
+        if (bottom - top) < frame_height:
+            if top == 0:
+                bottom = min(self.composite_map_info['height'], frame_height)
             else:
-                crop_box.top = max(0, crop_box.bottom - frame_height)
+                top = max(0, bottom - frame_height)
+
+        crop_box = Rectangle(left=left, top=top, right=right, bottom=bottom)
 
         # Crop the composite map
         cropped = self.composite_map.crop((crop_box.left, crop_box.top, crop_box.right, crop_box.bottom))
