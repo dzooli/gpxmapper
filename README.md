@@ -422,6 +422,68 @@ For Windows executable:
 gpxmapper.exe clear-cache
 ```
 
+## Troubleshooting
+
+### uv sync --reinstall shows warning about missing RECORD (e.g., numpy)
+
+If you see a message like:
+
+```
+warning: Failed to uninstall package at .venv\Lib\site-packages\numpy-<version>.dist-info due to missing `RECORD` file. Installation may result in an incomplete environment.
+```
+
+This means a previous wheel left a corrupted metadata directory, so uv cannot cleanly uninstall it. You can fix it safely in two ways on Windows:
+
+1) Quick repair (remove only corrupted .dist-info):
+
+- Close any running Python processes
+- From the project root, run:
+
+```powershell
+# Clean corrupted dist-info entries (e.g. numpy) and then reinstall
+./scripts/repair-venv.ps1
+uv sync --reinstall
+```
+
+2) Full reset of the virtual environment:
+
+```powershell
+# Remove the entire venv and recreate it
+./scripts/repair-venv.ps1 -RemoveVenv
+uv venv
+uv sync
+```
+
+Notes:
+- The project targets Python 3.12+ and locks dependencies via uv.lock. NumPy is specified as ">=1.24.0" and will typically resolve to 2.x on Python 3.12.
+- If you keep hitting this warning, prefer the full reset which guarantees a clean state.
+
+#### Should I delete uv.lock as well?
+
+Usually no. Deleting uv.lock discards the known-good, reproducible set of versions. Prefer to:
+
+- Delete only the virtual environment (.venv) and keep uv.lock, then run `uv sync` to recreate a clean env that exactly matches the lock. This is the safest and fastest fix.
+- Only delete uv.lock if you intentionally want to re-resolve to newer dependency versions (which may introduce changes), or if the lock itself is corrupted/out-of-sync with pyproject.toml.
+
+Quick commands on Windows PowerShell to fully reset while keeping the lock:
+
+```powershell
+# From project root
+./scripts/repair-venv.ps1 -RemoveVenv
+uv venv
+uv sync
+```
+
+To force a fresh resolution (not typically required):
+
+```powershell
+Remove-Item -Force uv.lock
+./scripts/repair-venv.ps1 -RemoveVenv
+uv venv
+uv lock    # regenerate lock from pyproject
+uv sync
+```
+
 ## License
 
 MIT
