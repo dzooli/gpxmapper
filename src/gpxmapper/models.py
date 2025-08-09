@@ -65,7 +65,7 @@ class GPXTrackPoint:
         :return: The great-circle distance between the two points in meters.
         :rtype: float
         """
-        R = 6371000  # Earth radius in meters
+        average_earth_radius: float = 6371000  # Earth radius in meters
         lat1, lon1 = math.radians(self.latitude), math.radians(self.longitude)
         lat2, lon2 = math.radians(other.latitude), math.radians(other.longitude)
 
@@ -75,7 +75,7 @@ class GPXTrackPoint:
         a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
         c = 2 * math.asin(math.sqrt(a))
 
-        return R * c
+        return average_earth_radius * c
 
     def elevation_gain(self, other: 'GPXTrackPoint') -> float:
         """
@@ -89,7 +89,7 @@ class GPXTrackPoint:
 
         :param other: Another GPXTrackPoint object to compare elevation with.
         :type other: GPXTrackPoint
-        :return: The elevation gain as a float. If the elevation of the other point
+        :return: The elevation gains as a float. If the elevation of the other point
                  is higher than this point, the function returns the positive difference.
                  Otherwise, it returns 0.0.
         :rtype: float
@@ -99,7 +99,7 @@ class GPXTrackPoint:
         return max(0.0, other.elevation - self.elevation)
 
     def time_delta(self, other: 'GPXTrackPoint') -> Optional[float]:
-        """Calculate time difference in seconds."""
+        """Calculate the time difference in seconds."""
         if self.time is None or other.time is None:
             return None
         return (other.time - self.time).total_seconds()
@@ -116,17 +116,17 @@ class GPXTrackPoint:
 
     @property
     def has_elevation(self) -> bool:
-        """Check if point has elevation data."""
+        """Check if a point has elevation data."""
         return self.elevation is not None
 
     @property
     def has_timestamp(self) -> bool:
-        """Check if point has timestamp data."""
+        """Check if a point has timestamp data."""
         return self.time is not None
 
     @property
     def has_extensions(self) -> bool:
-        """Check if point has extensions data."""
+        """Check if the point has extension data."""
         return len(self.extensions) > 0
 
     def to_dict(self) -> dict:
