@@ -1,7 +1,7 @@
 site_name: GPXMapper
 site_description: "GPX to video mapper - creates videos from GPX tracks"
 site_author: "Zoltan Fabian"
-repo_url: https://github.com/
+repo_url: https://github.com/dzooli/gpxmapper
 edit_uri: ""
 
 # Source docs directory
