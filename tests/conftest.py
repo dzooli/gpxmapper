@@ -1,4 +1,5 @@
 import pytest_asyncio
+
 from src.gpxmapper.geolocation_clients import AsyncNominatimClient
 
 
