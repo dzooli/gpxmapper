@@ -28,6 +28,7 @@ dependencies = [
     "pillow>=10.0.0",
     "numpy>=1.24.0",
     "httpx==0.28.1",
+    "geopy>=2.4.1",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -66,7 +67,7 @@ entry_point = "exe_entry_point.py"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["gpxmapper"]
+packages = ["gpxmapper", "gpxmapper.geolocation_clients"]
 
 [dependency-groups]
 dev = [
@@ -74,4 +75,9 @@ dev = [
     "pre-commit>=4.2.0",
     "pyinstaller>=6.0.0",
     "tomli>=2.2.1",
+    "pytest",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-httpx>=0.35.0",
+    "pytest-mock"
 ]
