@@ -1,6 +1,6 @@
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
-import asyncio
 
 import pytest
 import pytest_asyncio
