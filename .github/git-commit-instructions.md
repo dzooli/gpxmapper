@@ -8,7 +8,7 @@
 - Use imperative mood (e.g., "add" not "added" or "adds")
 - Don't end with a period
 - Use lowercase for the first word unless it's a proper noun
-- Provide more details in the commit body if needed, separated by a blank line
+- Provide more details in the commit body, separated by a blank line
 
 ## Branch naming conventions
 - Use kebab-case (lowercase with hyphens)
