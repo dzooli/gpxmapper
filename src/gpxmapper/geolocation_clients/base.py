@@ -1,0 +1,202 @@
+from __future__ import annotations
+
+import asyncio
+import logging
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Any, Awaitable, Callable, Dict, List, Optional, TypeVar
+
+import httpx
+
+
+@dataclass(slots=True)
+class NominatimAddress:
+    # Flexible mapping for address components (e.g., road, city, country, etc.)
+    data: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class NominatimReverseResponse:
+    place_id: int
+    lat: float
+    lon: float
+    display_name: str
+    address: NominatimAddress
+    boundingbox: Optional[List[float]] = None
+    osm_type: Optional[str] = None
+    osm_id: Optional[int] = None
+
+
+@dataclass(slots=True)
+class NominatimStatusResponse:
+    raw_html: str
+
+
+class AbstractGeolocationClient(ABC):
+    """Abstract base class for geolocation clients."""
+
+    @abstractmethod
+    async def reverse_geocode(
+        self, lat: float, lon: float, extra_params: Optional[Dict[str, Any]] = None
+    ) -> NominatimReverseResponse:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_status(self) -> NominatimStatusResponse:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def aclose(self):
+        raise NotImplementedError
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.aclose()
+
+
+class GeolocationServiceUnavailable(Exception):
+    """Raised when the geolocation service is unavailable after retries."""
+
+    pass
+
+
+class GeolocationClientFactory:
+    """Factory for creating geolocation client instances. Supports registration of new client types."""
+
+    _registry: Dict[str, type[AbstractGeolocationClient]] = {}
+
+    @classmethod
+    def register_client(cls, name: str, client_cls: type[AbstractGeolocationClient]):
+        cls._registry[name] = client_cls
+
+    @classmethod
+    def create_client(cls, name: str, **kwargs) -> AbstractGeolocationClient:
+        if name not in cls._registry:
+            msg = f"Unknown geolocation client: {name}"
+            raise ValueError(msg)
+        return cls._registry[name](**kwargs)
+
+
+class GeolocationClientSingleton:
+    _instance: Optional[AbstractGeolocationClient] = None
+
+    @classmethod
+    def get_instance(
+        cls, client: Optional[AbstractGeolocationClient] = None
+    ) -> AbstractGeolocationClient:
+        if client is not None:
+            cls._instance = client
+        if cls._instance is None:
+            raise RuntimeError("No geolocation client instance set.")
+        return cls._instance
+
+    @classmethod
+    def clear_instance(cls):
+        cls._instance = None
+
+
+# ------------- Shared helpers for robust external calls -------------
+T = TypeVar("T")
+
+
+class RobustExternalCalls:
+    """Mixin that provides header building and retry helpers as instance methods."""
+
+    user_agent: str
+    email: Optional[str]
+    max_retries: int
+    backoff_factor: float
+    logger: Optional[logging.Logger]
+
+    def build_headers(self) -> Dict[str, str]:
+        headers = {"User-Agent": self.user_agent}
+        if self.email:
+            headers["From"] = self.email
+        return headers
+
+    async def retry(self, op: Callable[[], Awaitable[T]]) -> T:
+        last_exc: Optional[BaseException] = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                return await op()
+            except Exception as exc:  # noqa: BLE001 catch broad for test/mocks and transient errors
+                if self.logger:
+                    self.logger.warning(f"Attempt {attempt} failed: {exc}")
+                last_exc = exc
+                if attempt < self.max_retries:
+                    await asyncio.sleep(self.backoff_factor * (2 ** (attempt - 1)))
+        raise GeolocationServiceUnavailable(
+            f"Service unavailable after {self.max_retries} attempts"
+        ) from last_exc
+
+
+class HttpxClientMixin(RobustExternalCalls):
+    """Mixin that manages an httpx.AsyncClient and provides a robust request method."""
+
+    timeout: float
+    _httpx_client: Optional[httpx.AsyncClient] = None
+
+    @property
+    def _client(self):  # backward-compat for tests
+        if self._httpx_client is None:
+            self._httpx_client = httpx.AsyncClient(timeout=self.timeout)
+        return self._httpx_client
+
+    def _ensure_httpx_client(self) -> httpx.AsyncClient:
+        if self._httpx_client is None or getattr(
+            self._httpx_client, "is_closed", False
+        ):
+            self._httpx_client = httpx.AsyncClient(timeout=self.timeout)
+        return self._httpx_client
+
+    async def request(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
+        client = self._ensure_httpx_client()
+        headers = kwargs.pop("headers", None)
+        merged_headers = self.build_headers()
+        if headers:
+            merged_headers.update(headers)
+
+        async def _do() -> httpx.Response:
+            resp = await client.request(method, url, headers=merged_headers, **kwargs)
+            resp.raise_for_status()
+            return resp
+
+        return await self.retry(_do)
+
+    async def aclose(self):
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
+
+
+# ------------- Concrete common base for Nominatim HTTP clients -------------
+class NominatimHttpClientBase(HttpxClientMixin, AbstractGeolocationClient):
+    """Common base for Nominatim HTTP clients.
+
+    Expects subclasses to set base_url, user_agent, email, timeout, max_retries, backoff_factor, logger.
+    Provides shared get_status behavior.
+    """
+
+    def __init__(
+        self,
+        base_url: str = "https://nominatim.openstreetmap.org",
+        user_agent: str = "gpxmapper/1.0",
+        email: Optional[str] = None,
+        timeout: float = 10.0,
+        max_retries: int = 3,
+        backoff_factor: float = 0.5,
+        logger: Optional[logging.Logger] = None,
+    ):
+        self.base_url = base_url.rstrip("/")
+        self.user_agent = user_agent
+        self.email = email
+        self.timeout = timeout
+        self.max_retries = max_retries
+        self.backoff_factor = backoff_factor
+        self.logger = logger or logging.getLogger(__name__)
+
+    async def get_status(self) -> NominatimStatusResponse:  # type: ignore[override]
+        url = f"{self.base_url}/status"  # type: ignore[attr-defined]
+        resp = await self.request("GET", url)
+        return NominatimStatusResponse(raw_html=resp.text)
