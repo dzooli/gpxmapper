@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-import mkdocs_gen_files as gen_files
 
+import mkdocs_gen_files as gen_files
 
 PACKAGE_ROOT = Path("src")
 PACKAGE_IMPORT = "gpxmapper"
