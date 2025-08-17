@@ -73,10 +73,10 @@ class GeolocationClientFactory:
 
     @classmethod
     def create_client(cls, name: str, **kwargs) -> AbstractGeolocationClient:
-        if name not in cls._registry:
-            msg = f"Unknown geolocation client: {name}"
-            raise ValueError(msg)
-        return cls._registry[name](**kwargs)
+        client_cls = cls._registry.get(name)
+        if client_cls is None:
+            raise ValueError(f"Unknown geolocation client: {name}")
+        return client_cls(**kwargs)
 
 
 class GeolocationClientSingleton:
@@ -153,10 +153,10 @@ class HttpxClientMixin(RobustExternalCalls):
 
     async def request(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
         client = self._ensure_httpx_client()
-        headers = kwargs.pop("headers", None)
+        headers = kwargs.pop("headers", {})
         merged_headers = self.build_headers()
-        if headers:
-            merged_headers.update(headers)
+        if headers is not None:
+            merged_headers = {**merged_headers, **headers}
 
         async def _do() -> httpx.Response:
             resp = await client.request(method, url, headers=merged_headers, **kwargs)
@@ -200,3 +200,8 @@ class NominatimHttpClientBase(HttpxClientMixin, AbstractGeolocationClient):
         url = f"{self.base_url}/status"  # type: ignore[attr-defined]
         resp = await self.request("GET", url)
         return NominatimStatusResponse(raw_html=resp.text)
+
+    async def reverse_geocode(
+        self, lat: float, lon: float, extra_params: Optional[Dict[str, Any]] = None
+    ) -> NominatimReverseResponse:
+        raise NotImplementedError
