@@ -133,7 +133,7 @@ class RobustExternalCalls:
 
 
 class HttpxClientMixin(RobustExternalCalls):
-    """Mixin that manages an httpx.AsyncClient and provides a robust request method."""
+    """Mixin that manages a client httpx.AsyncClient and provides a robust request method."""
 
     timeout: float
     _httpx_client: Optional[httpx.AsyncClient] = None
