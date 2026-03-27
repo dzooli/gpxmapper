@@ -11,6 +11,7 @@ import concurrent.futures
 import csv
 import logging
 import os
+import time
 import zoneinfo
 from datetime import datetime, timedelta
 from typing import List, Tuple
@@ -303,9 +304,9 @@ class VideoCaptioner:
         thickness = 2
         (_, text_height), _ = self.font_manager.get_text_size(self.scrolling_text, thickness)
 
-        # Calculate y position based on whether timestamp is shown
-        margin = 10
         if self.show_timestamp:
+            # Calculate y position based on whether timestamp is shown
+            margin = 10
             # Position above timestamp with margin
             y_pos = self.height - text_height - margin * 3
         else:
@@ -648,58 +649,63 @@ class VideoGenerator:
         Raises:
             ValueError: If track points don't have time data or other issues
         """
-        # Prepare track points (filter and sort)
-        points_with_time = self._prepare_track_points(track_points)
-
-        # Reset position cache and last index for a new video
-        self._position_cache = {}
-        self._last_index = 0
-
-        # Get time range
-        start_time = points_with_time[0].time
-        end_time = points_with_time[-1].time
-        total_track_seconds = (end_time - start_time).total_seconds()
-
-        logger.info(f"Generating video with duration {duration_seconds}s from track spanning {total_track_seconds}s")
-
-        # Calculate the bounding box of all track points
-        min_lat = min(p.latitude for p in track_points)
-        max_lat = max(p.latitude for p in track_points)
-        min_lon = min(p.longitude for p in track_points)
-        max_lon = max(p.longitude for p in track_points)
-
-        # Add some padding to the bounding box (10%)
-        lat_padding = (max_lat - min_lat) * 0.1
-        lon_padding = (max_lon - min_lon) * 0.1
-        min_lat -= lat_padding
-        max_lat += lat_padding
-        min_lon -= lon_padding
-        max_lon += lon_padding
-
-        logger.info(f"Track bounding box: {min_lat:.6f},{min_lon:.6f} to {max_lat:.6f},{max_lon:.6f}")
-
-        # Create a composite map for the entire track
-        logger.info(f"Creating composite map at zoom level {self.zoom_level}...")
-        self.map_renderer.create_composite_map(min_lat, min_lon, max_lat, max_lon, self.zoom_level)
-        logger.info(
-            f"Composite map created with size {self.map_renderer.composite_map_info['width']}x{self.map_renderer.composite_map_info['height']} pixels")
-
-        # Initialize video writer
-        # Use MPEG4 codec with mp4v FOURCC for MP4 format
-        # Define VideoWriter_fourcc directly to avoid undefined reference
-        fourcc = cv2.VideoWriter.fourcc(*'mp4v')
-        video_writer = cv2.VideoWriter(
-            self.output_path, fourcc, self.fps, (self.width, self.height)
-        )
-
-        if not video_writer.isOpened():
-            raise ValueError(f"Failed to open video writer for {self.output_path}")
-
+        render_started_at = time.perf_counter()
         try:
+            # Prepare track points (filter and sort)
+            points_with_time = self._prepare_track_points(track_points)
+
+            # Reset position cache and last index for a new video
+            self._position_cache = {}
+            self._last_index = 0
+
+            # Get time range
+            start_time = points_with_time[0].time
+            end_time = points_with_time[-1].time
+            total_track_seconds = (end_time - start_time).total_seconds()
+
+            logger.info(
+                f"Generating video with duration {duration_seconds}s from track spanning {total_track_seconds}s")
+
+            # Calculate the bounding box of all track points
+            min_lat = min(p.latitude for p in track_points)
+            max_lat = max(p.latitude for p in track_points)
+            min_lon = min(p.longitude for p in track_points)
+            max_lon = max(p.longitude for p in track_points)
+
+            # Add some padding to the bounding box (10%)
+            lat_padding = (max_lat - min_lat) * 0.1
+            lon_padding = (max_lon - min_lon) * 0.1
+            min_lat -= lat_padding
+            max_lat += lat_padding
+            min_lon -= lon_padding
+            max_lon += lon_padding
+
+            logger.info(f"Track bounding box: {min_lat:.6f},{min_lon:.6f} to {max_lat:.6f},{max_lon:.6f}")
+
+            # Create a composite map for the entire track
+            logger.info(f"Creating composite map at zoom level {self.zoom_level}...")
+            self.map_renderer.create_composite_map(min_lat, min_lon, max_lat, max_lon, self.zoom_level)
+            logger.info(
+                f"Composite map created with size {self.map_renderer.composite_map_info['width']}x{self.map_renderer.composite_map_info['height']} pixels")
+
+            # Initialize video writer
+            # Use MPEG4 codec with mp4v FOURCC for MP4 format
+            # Define VideoWriter_fourcc directly to avoid undefined reference
+            fourcc = cv2.VideoWriter.fourcc(*'mp4v')
+            video_writer = cv2.VideoWriter(
+                self.output_path, fourcc, self.fps, (self.width, self.height)
+            )
+
+            if not video_writer.isOpened():
+                raise ValueError(f"Failed to open video writer for {self.output_path}")
+
             self._write_video_frames(video_writer, points_with_time, duration_seconds, start_time, total_track_seconds)
             logger.info(f"Video generation complete: {self.output_path}")
             return self.output_path
 
         finally:
-            # Release video writer
-            video_writer.release()
+            elapsed_seconds = time.perf_counter() - render_started_at
+            logger.info(f"Total video rendering time: {elapsed_seconds:.2f}s")
+            # Release video writer if initialized
+            if "video_writer" in locals():
+                video_writer.release()
