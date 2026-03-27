@@ -7,20 +7,20 @@ This module has been optimized for performance with the following improvements:
 4. Batch processing of frames for better memory management
 """
 
+import concurrent.futures
 import csv
 import logging
 import os
-from datetime import datetime, timedelta
-from typing import List, Tuple, Optional
-import concurrent.futures
 import zoneinfo
+from datetime import datetime, timedelta
+from typing import List, Tuple
 
 import cv2
 import numpy as np
 
-from .models import GPXTrackPoint, TextConfig
-from .map_renderer import MapRenderer
 from .font_manager import FontManager
+from .map_renderer import MapRendererFactory, MapRendererKind
+from .models import GPXTrackPoint, TextConfig
 
 logger = logging.getLogger(__name__)
 
@@ -376,7 +376,7 @@ class VideoGenerator:
         self.marker_size = marker_size
 
         # Initialize map renderer
-        self.map_renderer = MapRenderer()
+        self.map_renderer = MapRendererFactory.create(MapRendererKind.ASYNC)
 
         # Initialize text config with defaults if not provided
         default_text_config = TextConfig(

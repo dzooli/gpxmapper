@@ -7,7 +7,6 @@ from typing import Optional, Tuple
 import typer
 
 from ..gpx_parser import GPXParser
-from ..map_renderer import MapRenderer
 from ..models import TextConfig, VideoConfig, MapConfig
 from ..video_generator import VideoGenerator
 
