@@ -67,7 +67,7 @@ class MapRendererAsync(MapRendererBase):
         url = self.build_tile_url(x, y, zoom)
 
         try:
-            response = await client.get(url, headers={"User-Agent": "gpxmapper/0.1.0"})
+            response = await client.get(url, headers=self.build_tile_headers())
             response.raise_for_status()
 
             image = Image.open(io.BytesIO(response.content))
@@ -91,8 +91,15 @@ class MapRendererAsync(MapRendererBase):
 
     async def _fetch_single_tile_async(self, x: int, y: int, zoom: int) -> Optional[MapTile]:
         """Fetch one tile with a dedicated client session."""
-        timeout = httpx.Timeout(30.0, connect=10.0)
-        limits = httpx.Limits(max_keepalive_connections=10, max_connections=20)
+        (total_timeout, connect_timeout), (max_keepalive, max_connections) = self.resolve_adaptive_async_client_config(
+            timeout_profile=self.ASYNC_TIMEOUT_PROFILE_SINGLE,
+            limits_profile=self.ASYNC_LIMITS_PROFILE_SINGLE,
+            fallback_timeout=(30.0, 10.0),
+            fallback_limits=(10, 20),
+            task_count=1,
+        )
+        timeout = httpx.Timeout(total_timeout, connect=connect_timeout)
+        limits = httpx.Limits(max_keepalive_connections=max_keepalive, max_connections=max_connections)
 
         async with httpx.AsyncClient(timeout=timeout, limits=limits) as client:
             return await self._fetch_tile_async(client, x, y, zoom)
@@ -112,8 +119,15 @@ class MapRendererAsync(MapRendererBase):
     ) -> List[MapTile]:
         tile_coords = self.build_tile_coords_for_bounds(min_lat, min_lon, max_lat, max_lon, zoom)
 
-        timeout = httpx.Timeout(60.0, connect=10.0)
-        limits = httpx.Limits(max_keepalive_connections=20, max_connections=50)
+        (total_timeout, connect_timeout), (max_keepalive, max_connections) = self.resolve_adaptive_async_client_config(
+            timeout_profile=self.ASYNC_TIMEOUT_PROFILE_BOUNDS,
+            limits_profile=self.ASYNC_LIMITS_PROFILE_BATCH,
+            fallback_timeout=(60.0, 10.0),
+            fallback_limits=(20, 50),
+            task_count=len(tile_coords),
+        )
+        timeout = httpx.Timeout(total_timeout, connect=connect_timeout)
+        limits = httpx.Limits(max_keepalive_connections=max_keepalive, max_connections=max_connections)
 
         async with httpx.AsyncClient(timeout=timeout, limits=limits) as client:
             tasks = [self._fetch_tile_async(client, x, y, z) for x, y, z in tile_coords]
@@ -148,8 +162,15 @@ class MapRendererAsync(MapRendererBase):
 
         tile_coords = self.build_tile_coords(min_tile.x, max_tile.x, min_tile.y, max_tile.y, zoom)
 
-        timeout = httpx.Timeout(120.0, connect=10.0)
-        limits = httpx.Limits(max_keepalive_connections=20, max_connections=50)
+        (total_timeout, connect_timeout), (max_keepalive, max_connections) = self.resolve_adaptive_async_client_config(
+            timeout_profile=self.ASYNC_TIMEOUT_PROFILE_COMPOSITE,
+            limits_profile=self.ASYNC_LIMITS_PROFILE_BATCH,
+            fallback_timeout=(120.0, 10.0),
+            fallback_limits=(20, 50),
+            task_count=len(tile_coords),
+        )
+        timeout = httpx.Timeout(total_timeout, connect=connect_timeout)
+        limits = httpx.Limits(max_keepalive_connections=max_keepalive, max_connections=max_connections)
 
         async with httpx.AsyncClient(timeout=timeout, limits=limits) as client:
             tasks = [self._fetch_tile_async(client, x, y, z) for x, y, z in tile_coords]

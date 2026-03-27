@@ -26,13 +26,18 @@ class MapRendererFactory:
         cls._registry[name] = renderer_cls
 
     @classmethod
-    def create_renderer(cls, name: str, **kwargs) -> MapRendererBase:
+    def _create_by_name(cls, name: str, **kwargs) -> MapRendererBase:
         renderer_cls = cls._registry.get(name)
         if renderer_cls is None:
             raise ValueError(f"Unknown map renderer: {name}")
         if kwargs.get("tile_server") is None and name == MapRendererKind.SYNC.value:
             kwargs = {**kwargs, "tile_server": DEFAULT_TILE_SERVER}
         return renderer_cls(**kwargs)
+
+    @classmethod
+    def create_renderer(cls, name: str, **kwargs) -> MapRendererBase:
+        """Compatibility API; prefer :meth:`create` in new call sites."""
+        return cls._create_by_name(name, **kwargs)
 
     @classmethod
     def create(
@@ -43,7 +48,7 @@ class MapRendererFactory:
             cache_dir: Optional[str] = None,
             use_cache: bool = True,
     ) -> MapRendererBase:
-        """Instantiate the requested renderer (convenience wrapper around :meth:`create_renderer`).
+        """Instantiate the requested renderer (preferred public entry point).
 
         Args:
             kind: ``sync`` (default) or ``async``, as enum or string.
@@ -55,7 +60,7 @@ class MapRendererFactory:
             A concrete map renderer.
         """
         name = kind.value if isinstance(kind, MapRendererKind) else str(kind).lower()
-        return cls.create_renderer(
+        return cls._create_by_name(
             name,
             tile_server=tile_server,
             cache_dir=cache_dir,

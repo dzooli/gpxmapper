@@ -26,11 +26,18 @@ class MapRenderer(MapRendererBase):
             tile_server: Optional[str] = None,
             cache_dir: Optional[str] = None,
             use_cache: bool = True,
-            request_timeout: float = 30.0,
+            request_timeout: Optional[float] = None,
     ):
         resolved_server = tile_server if tile_server is not None else DEFAULT_TILE_SERVER
         super().__init__(resolved_server, cache_dir, use_cache)
-        self.request_timeout = request_timeout
+        resolved_timeout = (
+            self.get_sync_request_timeout()
+            if request_timeout is None
+            else float(request_timeout)
+        )
+        if resolved_timeout <= 0:
+            raise ValueError("request_timeout must be positive")
+        self.request_timeout = resolved_timeout
 
     def fetch_tile(self, x: int, y: int, zoom: int) -> Optional[MapTile]:
         """Fetch a map tile from the server or cache."""
@@ -43,7 +50,7 @@ class MapRenderer(MapRendererBase):
         try:
             response = requests.get(
                 url,
-                headers={"User-Agent": "gpxmapper/0.1.0"},
+                headers=self.build_tile_headers(),
                 timeout=self.request_timeout,
             )
             response.raise_for_status()

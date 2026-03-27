@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import itertools
 import logging
 import math
 import os
 import platform
+import threading
 from abc import ABC, abstractmethod
+from types import MappingProxyType
 from typing import List, Optional, Tuple
 
 from PIL import Image, ImageDraw
@@ -20,28 +23,65 @@ logger = logging.getLogger(__name__)
 class MapRendererBase(ABC):
     """Abstract base: shared cache, geometry, and rendering helpers."""
 
+    ASYNC_TIMEOUT_PROFILE_SINGLE = "single"
+    ASYNC_TIMEOUT_PROFILE_BOUNDS = "bounds"
+    ASYNC_TIMEOUT_PROFILE_COMPOSITE = "composite"
+    ASYNC_LIMITS_PROFILE_SINGLE = "single"
+    ASYNC_LIMITS_PROFILE_BATCH = "batch"
+
+    TILE_USER_AGENT = "gpxmapper/0.1.0"
+    TILE_ACCEPT = "image/png,image/*;q=0.9,*/*;q=0.8"
+    SYNC_REQUEST_TIMEOUT = 30.0
+    ASYNC_TIMEOUTS = MappingProxyType(
+        {
+            ASYNC_TIMEOUT_PROFILE_SINGLE: (30.0, 10.0),
+            ASYNC_TIMEOUT_PROFILE_BOUNDS: (60.0, 10.0),
+            ASYNC_TIMEOUT_PROFILE_COMPOSITE: (120.0, 10.0),
+        }
+    )
+    ASYNC_LIMITS = MappingProxyType(
+        {
+            ASYNC_LIMITS_PROFILE_SINGLE: (10, 20),
+            ASYNC_LIMITS_PROFILE_BATCH: (20, 50),
+        }
+    )
+    _default_cache_dir_by_system: dict[str, str] = {}
+    _default_cache_dir_lock = threading.Lock()
+
     @staticmethod
     def resolve_default_cache_directory() -> str:
         """Return the default tile cache directory for the current OS.
 
-        Does not create the directory. All renderer implementations share this path when
-        ``cache_dir`` is omitted at construction time.
+        This function only resolves and memoizes the path; directory creation happens in
+        :meth:`__init__`.
         """
         system = platform.system()
-        if system == "Windows":
-            appdata = os.environ.get("LOCALAPPDATA")
-            if appdata:
-                return os.path.join(appdata, "gpxmapper", "cache")
-            return os.path.join(os.path.expanduser("~"), "AppData", "Local", "gpxmapper", "cache")
-        if system == "Linux":
-            return os.path.join(os.path.expanduser("~"), ".cache", "gpxmapper")
-        return os.path.join(os.path.expanduser("~"), ".gpxmapper", "cache")
+        cached = MapRendererBase._default_cache_dir_by_system.get(system)
+        if cached is not None:
+            return cached
+
+        with MapRendererBase._default_cache_dir_lock:
+            cached = MapRendererBase._default_cache_dir_by_system.get(system)
+            if cached is not None:
+                return cached
+
+            if system == "Windows":
+                appdata = os.environ.get("LOCALAPPDATA")
+                if appdata:
+                    resolved = os.path.join(appdata, "gpxmapper", "cache")
+                else:
+                    resolved = os.path.join(os.path.expanduser("~"), "AppData", "Local", "gpxmapper", "cache")
+            elif system == "Linux":
+                resolved = os.path.join(os.path.expanduser("~"), ".cache", "gpxmapper")
+            else:
+                resolved = os.path.join(os.path.expanduser("~"), ".gpxmapper", "cache")
+            MapRendererBase._default_cache_dir_by_system[system] = resolved
+            return resolved
 
     @classmethod
     def resolve_cache_directory(cls, cache_dir: Optional[str]) -> Optional[str]:
         """Normalize ``cache_dir``: use :meth:`resolve_default_cache_directory` when ``None``."""
         if cache_dir is None:
-            logger.info("Using OS dependent cache dir")
             return cls.resolve_default_cache_directory()
         return cache_dir
 
@@ -65,7 +105,7 @@ class MapRendererBase(ABC):
         self.use_cache = use_cache
 
         self.cache_dir = self.resolve_cache_directory(cache_dir)
-        logger.info(f"Using cache dir: {self.cache_dir}")
+        logger.debug("Using cache dir: %s", self.cache_dir)
 
         if self.cache_dir:
             os.makedirs(self.cache_dir, exist_ok=True)
@@ -76,12 +116,130 @@ class MapRendererBase(ABC):
         """Build a tile URL from template."""
         return self.tile_server.replace("{x}", str(x)).replace("{y}", str(y)).replace("{z}", str(zoom))
 
+    @classmethod
+    def build_tile_headers(cls) -> dict[str, str]:
+        """Return validated shared HTTP headers for map-tile requests."""
+        user_agent = cls.TILE_USER_AGENT.strip()
+        if not user_agent:
+            raise ValueError("TILE_USER_AGENT must be a non-empty string")
+        if accept := cls.TILE_ACCEPT.strip():
+            return {
+                "User-Agent": user_agent,
+                "Accept": accept,
+            }
+        else:
+            raise ValueError("TILE_ACCEPT must be a non-empty string")
+
+    @classmethod
+    def get_sync_request_timeout(cls) -> float:
+        """Return default timeout (seconds) for sync tile requests."""
+        timeout = float(cls.SYNC_REQUEST_TIMEOUT)
+        if timeout <= 0:
+            raise ValueError("SYNC_REQUEST_TIMEOUT must be positive")
+        return timeout
+
+    @classmethod
+    def get_async_timeout_values(cls, profile: str) -> tuple[float, float]:
+        """Return ``(total, connect)`` timeout values for async requests."""
+        if profile not in cls.ASYNC_TIMEOUTS:
+            raise ValueError(f"Unknown async timeout profile: {profile}")
+        total, connect = cls.ASYNC_TIMEOUTS[profile]
+        if total <= 0 or connect <= 0:
+            raise ValueError(f"Async timeout values must be positive for profile: {profile}")
+        if connect > total:
+            raise ValueError(
+                f"Async connect timeout ({connect}) cannot exceed total timeout ({total}) "
+                f"for profile: {profile}"
+            )
+        return float(total), float(connect)
+
+    @classmethod
+    def get_async_limit_values(cls, profile: str) -> tuple[int, int]:
+        """Return ``(max_keepalive_connections, max_connections)`` for async clients."""
+        if profile not in cls.ASYNC_LIMITS:
+            raise ValueError(f"Unknown async limits profile: {profile}")
+        max_keepalive, max_connections = cls.ASYNC_LIMITS[profile]
+        if max_keepalive < 0 or max_connections <= 0:
+            raise ValueError(f"Async connection limits must be non-negative/positive for profile: {profile}")
+        if max_keepalive > max_connections:
+            raise ValueError(
+                f"Async keepalive connections ({max_keepalive}) cannot exceed max connections "
+                f"({max_connections}) for profile: {profile}"
+            )
+        return int(max_keepalive), int(max_connections)
+
+    @classmethod
+    def resolve_async_client_config(
+            cls,
+            *,
+            timeout_profile: str,
+            limits_profile: str,
+            fallback_timeout: tuple[float, float],
+            fallback_limits: tuple[int, int],
+    ) -> tuple[tuple[float, float], tuple[int, int]]:
+        """Resolve async HTTP config for a profile, with validated fallbacks."""
+        try:
+            timeout_values = cls.get_async_timeout_values(timeout_profile)
+        except ValueError as exc:
+            logger.warning(
+                "Invalid async timeout profile '%s' (%s). Falling back to %s",
+                timeout_profile,
+                exc,
+                fallback_timeout,
+            )
+            timeout_values = fallback_timeout
+
+        try:
+            limit_values = cls.get_async_limit_values(limits_profile)
+        except ValueError as exc:
+            logger.warning(
+                "Invalid async limits profile '%s' (%s). Falling back to %s",
+                limits_profile,
+                exc,
+                fallback_limits,
+            )
+            limit_values = fallback_limits
+
+        return timeout_values, limit_values
+
+    @classmethod
+    def resolve_adaptive_async_client_config(
+            cls,
+            *,
+            timeout_profile: str,
+            limits_profile: str,
+            fallback_timeout: tuple[float, float],
+            fallback_limits: tuple[int, int],
+            task_count: Optional[int] = None,
+    ) -> tuple[tuple[float, float], tuple[int, int]]:
+        """Resolve async config and adapt it for variable batch sizes.
+
+        For large composite/bounds fetches, this keeps connection settings realistic
+        for the actual task size and stretches total timeout when the expected work
+        spans multiple connection waves.
+        """
+        (total_timeout, connect_timeout), (max_keepalive, max_connections) = cls.resolve_async_client_config(
+            timeout_profile=timeout_profile,
+            limits_profile=limits_profile,
+            fallback_timeout=fallback_timeout,
+            fallback_limits=fallback_limits,
+        )
+
+        if task_count is not None and task_count > 0:
+            max_connections = max(1, min(max_connections, task_count))
+            max_keepalive = min(max_keepalive, max_connections)
+
+            waves = math.ceil(task_count / max_connections)
+            if waves > 1:
+                multiplier = min(1.0 + 0.25 * (waves - 1), 3.0)
+                total_timeout *= multiplier
+
+        return (total_timeout, connect_timeout), (max_keepalive, max_connections)
+
     @staticmethod
     def ensure_rgb(image: Image.Image) -> Image.Image:
         """Ensure image is in RGB mode."""
-        if image.mode != "RGB":
-            return image.convert("RGB")
-        return image
+        return image.convert("RGB") if image.mode != "RGB" else image
 
     def open_cached_image(self, x: int, y: int, zoom: int) -> Optional[Image.Image]:
         """Try to open a cached tile image and return it, or None."""
@@ -107,11 +265,12 @@ class MapRendererBase(ABC):
 
     def build_tile_coords(self, min_x: int, max_x: int, min_y: int, max_y: int, zoom: int) -> List[tuple]:
         """Build list of (x,y,zoom) tile coordinates for the given tile bounds."""
-        coords = []
-        for x in range(min_x, max_x + 1):
-            for y in range(min_y, max_y + 1):
-                coords.append((x, y, zoom))
-        return coords
+        return [
+            (x, y, zoom)
+            for x, y in itertools.product(
+                range(min_x, max_x + 1), range(min_y, max_y + 1)
+            )
+        ]
 
     def build_tile_coords_for_bounds(
             self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
@@ -132,19 +291,18 @@ class MapRendererBase(ABC):
             tile_lookup: dict,
     ) -> None:
         """Paste tiles from tile_lookup onto composite image, filling blanks if missing."""
-        for x in range(min_x, max_x + 1):
-            for y in range(min_y, max_y + 1):
-                tile = tile_lookup.get((x, y))
-                if tile and tile.image:
-                    pos_x = (x - min_x) * 256
-                    pos_y = (y - min_y) * 256
-                    composite.paste(tile.image, (pos_x, pos_y))
-                else:
-                    logger.warning(f"Missing tile at {x},{y}, zoom {zoom}")
-                    blank_tile = Image.new("RGB", (256, 256), (200, 200, 200))
-                    pos_x = (x - min_x) * 256
-                    pos_y = (y - min_y) * 256
-                    composite.paste(blank_tile, (pos_x, pos_y))
+        for x, y in itertools.product(range(min_x, max_x + 1), range(min_y, max_y + 1)):
+            tile = tile_lookup.get((x, y))
+            if tile and tile.image:
+                pos_x = (x - min_x) * 256
+                pos_y = (y - min_y) * 256
+                composite.paste(tile.image, (pos_x, pos_y))
+            else:
+                logger.warning(f"Missing tile at {x},{y}, zoom {zoom}")
+                blank_tile = Image.new("RGB", (256, 256), (200, 200, 200))
+                pos_x = (x - min_x) * 256
+                pos_y = (y - min_y) * 256
+                composite.paste(blank_tile, (pos_x, pos_y))
 
     def compute_composite_geometry(self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int):
         """Compute min/max tile bounds and composite dimensions for given geographic bounds.
@@ -220,10 +378,7 @@ class MapRendererBase(ABC):
             return None
 
         tile_path = os.path.join(self.cache_dir, f"{zoom}_{x}_{y}.png")
-        if os.path.exists(tile_path):
-            return tile_path
-
-        return None
+        return tile_path if os.path.exists(tile_path) else None
 
     @abstractmethod
     def fetch_tile(self, x: int, y: int, zoom: int) -> Optional[MapTile]:

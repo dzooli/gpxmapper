@@ -12,6 +12,7 @@ import pytest
 from PIL import Image
 
 from gpxmapper.map_renderer import MapRenderer, MapRendererAsync
+from gpxmapper.map_renderer.base import MapRendererBase
 
 
 def _solid_tile_png(rgb: tuple[int, int, int] = (90, 120, 150)) -> bytes:
@@ -94,6 +95,232 @@ def test_sync_fetch_tile_passes_configured_timeout(tmp_path, png_bytes) -> None:
     assert tile is not None
     mock_get.assert_called_once()
     assert mock_get.call_args.kwargs["timeout"] == 12.5
+    assert mock_get.call_args.kwargs["headers"] == renderer.build_tile_headers()
+
+
+def test_sync_renderer_none_timeout_uses_valid_default(tmp_path) -> None:
+    renderer = MapRenderer(cache_dir=str(tmp_path / "default_timeout"), use_cache=False, request_timeout=None)
+    assert renderer.request_timeout == MapRendererBase.get_sync_request_timeout()
+
+
+def test_sync_renderer_invalid_explicit_timeout_raises(tmp_path) -> None:
+    with pytest.raises(ValueError, match="request_timeout must be positive"):
+        MapRenderer(cache_dir=str(tmp_path / "invalid_timeout"), use_cache=False, request_timeout=0)
+
+
+def test_renderer_build_tile_headers_contains_required_defaults(tmp_path) -> None:
+    renderer = MapRenderer(cache_dir=str(tmp_path / "headers"), use_cache=False)
+    headers = renderer.build_tile_headers()
+    assert headers["User-Agent"] == "gpxmapper/0.1.0"
+    assert headers["Accept"] == "image/png,image/*;q=0.9,*/*;q=0.8"
+
+
+def test_build_tile_headers_rejects_blank_user_agent() -> None:
+    original = MapRendererBase.TILE_USER_AGENT
+    try:
+        MapRendererBase.TILE_USER_AGENT = "   "
+        with pytest.raises(ValueError, match="TILE_USER_AGENT must be a non-empty string"):
+            MapRendererBase.build_tile_headers()
+    finally:
+        MapRendererBase.TILE_USER_AGENT = original
+
+
+def test_build_tile_headers_rejects_blank_accept() -> None:
+    original = MapRendererBase.TILE_ACCEPT
+    try:
+        MapRendererBase.TILE_ACCEPT = "   "
+        with pytest.raises(ValueError, match="TILE_ACCEPT must be a non-empty string"):
+            MapRendererBase.build_tile_headers()
+    finally:
+        MapRendererBase.TILE_ACCEPT = original
+
+
+def test_sync_timeout_configuration_must_be_positive() -> None:
+    original = MapRendererBase.SYNC_REQUEST_TIMEOUT
+    try:
+        MapRendererBase.SYNC_REQUEST_TIMEOUT = 0.0
+        with pytest.raises(ValueError, match="SYNC_REQUEST_TIMEOUT must be positive"):
+            MapRendererBase.get_sync_request_timeout()
+    finally:
+        MapRendererBase.SYNC_REQUEST_TIMEOUT = original
+
+
+def test_async_fetch_tile_uses_shared_headers(tmp_path, png_bytes) -> None:
+    captured_headers = {}
+
+    class _CapturingHttpxAsyncClient:
+        def __init__(self, *args, **kwargs):  # noqa: ANN002
+            return None
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):  # noqa: ANN002
+            return None
+
+        async def get(self, url: str, **kwargs):  # noqa: ARG002
+            captured_headers.update(kwargs.get("headers", {}))
+            r = MagicMock()
+            r.content = png_bytes
+            r.raise_for_status = MagicMock()
+            return r
+
+    with patch(
+            "gpxmapper.map_renderer.async_renderer.httpx.AsyncClient",
+            side_effect=_CapturingHttpxAsyncClient,
+    ):
+        renderer = MapRendererAsync(cache_dir=str(tmp_path / "async_headers"), use_cache=False)
+        tile = renderer.fetch_tile(0, 0, 0)
+
+    assert tile is not None
+    assert captured_headers == renderer.build_tile_headers()
+
+
+def test_async_single_profile_config_is_valid() -> None:
+    total_timeout, connect_timeout = MapRendererBase.get_async_timeout_values(
+        MapRendererBase.ASYNC_TIMEOUT_PROFILE_SINGLE
+    )
+    max_keepalive, max_connections = MapRendererBase.get_async_limit_values(
+        MapRendererBase.ASYNC_LIMITS_PROFILE_SINGLE
+    )
+    assert total_timeout > 0
+    assert connect_timeout > 0
+    assert connect_timeout <= total_timeout
+    assert max_connections > 0
+    assert max_keepalive >= 0
+    assert max_keepalive <= max_connections
+
+
+def test_async_single_profile_invalid_timeout_raises() -> None:
+    original = MapRendererBase.ASYNC_TIMEOUTS
+    try:
+        MapRendererBase.ASYNC_TIMEOUTS = {
+            **original,
+            MapRendererBase.ASYNC_TIMEOUT_PROFILE_SINGLE: (5.0, 10.0),
+        }
+        with pytest.raises(ValueError, match="cannot exceed total timeout"):
+            MapRendererBase.get_async_timeout_values(MapRendererBase.ASYNC_TIMEOUT_PROFILE_SINGLE)
+    finally:
+        MapRendererBase.ASYNC_TIMEOUTS = original
+
+
+def test_async_single_profile_invalid_limits_raises() -> None:
+    original = MapRendererBase.ASYNC_LIMITS
+    try:
+        MapRendererBase.ASYNC_LIMITS = {
+            **original,
+            MapRendererBase.ASYNC_LIMITS_PROFILE_SINGLE: (30, 20),
+        }
+        with pytest.raises(ValueError, match="cannot exceed max connections"):
+            MapRendererBase.get_async_limit_values(MapRendererBase.ASYNC_LIMITS_PROFILE_SINGLE)
+    finally:
+        MapRendererBase.ASYNC_LIMITS = original
+
+
+def test_async_batch_profile_config_is_valid() -> None:
+    total_timeout, connect_timeout = MapRendererBase.get_async_timeout_values(
+        MapRendererBase.ASYNC_TIMEOUT_PROFILE_BOUNDS
+    )
+    max_keepalive, max_connections = MapRendererBase.get_async_limit_values(
+        MapRendererBase.ASYNC_LIMITS_PROFILE_BATCH
+    )
+    assert total_timeout > 0
+    assert connect_timeout > 0
+    assert connect_timeout <= total_timeout
+    assert max_connections > 0
+    assert max_keepalive >= 0
+    assert max_keepalive <= max_connections
+
+
+def test_async_bounds_uses_fallback_when_batch_profiles_invalid(tmp_path, png_bytes) -> None:
+    captured_client_config = {}
+
+    class _CapturingBatchConfigClient:
+        def __init__(self, *args, **kwargs):  # noqa: ANN002
+            timeout = kwargs.get("timeout")
+            limits = kwargs.get("limits")
+            captured_client_config["timeout"] = timeout
+            captured_client_config["limits"] = limits
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):  # noqa: ANN002
+            return None
+
+        async def get(self, url: str, **kwargs):  # noqa: ARG002
+            r = MagicMock()
+            r.content = png_bytes
+            r.raise_for_status = MagicMock()
+            return r
+
+    original_timeouts = MapRendererBase.ASYNC_TIMEOUTS
+    original_limits = MapRendererBase.ASYNC_LIMITS
+    try:
+        MapRendererBase.ASYNC_TIMEOUTS = {
+            k: v
+            for k, v in original_timeouts.items()
+            if k != MapRendererBase.ASYNC_TIMEOUT_PROFILE_BOUNDS
+        }
+        MapRendererBase.ASYNC_LIMITS = {
+            **original_limits,
+            MapRendererBase.ASYNC_LIMITS_PROFILE_BATCH: (80, 50),
+        }
+        with patch(
+                "gpxmapper.map_renderer.async_renderer.httpx.AsyncClient",
+                side_effect=_CapturingBatchConfigClient,
+        ):
+            renderer = MapRendererAsync(cache_dir=str(tmp_path / "batch_fallback"), use_cache=False)
+            tiles = renderer.get_tiles_for_bounds(47.387014, 18.857873, 47.432039, 18.960122, 12)
+        assert tiles
+        timeout = captured_client_config["timeout"]
+        limits = captured_client_config["limits"]
+        assert timeout.connect == 10.0
+        assert timeout.read == 60.0
+        assert limits.max_connections <= 50
+        assert limits.max_keepalive_connections <= limits.max_connections
+    finally:
+        MapRendererBase.ASYNC_TIMEOUTS = original_timeouts
+        MapRendererBase.ASYNC_LIMITS = original_limits
+
+
+def test_adaptive_async_config_caps_connections_to_batch_size() -> None:
+    (_, _), (max_keepalive, max_connections) = MapRendererBase.resolve_adaptive_async_client_config(
+        timeout_profile=MapRendererBase.ASYNC_TIMEOUT_PROFILE_BOUNDS,
+        limits_profile=MapRendererBase.ASYNC_LIMITS_PROFILE_BATCH,
+        fallback_timeout=(60.0, 10.0),
+        fallback_limits=(20, 50),
+        task_count=3,
+    )
+    assert max_connections == 3
+    assert max_keepalive <= max_connections
+
+
+def test_adaptive_async_config_scales_timeout_for_large_composite_batch() -> None:
+    assert set(MapRendererBase.ASYNC_TIMEOUTS) == {
+        MapRendererBase.ASYNC_TIMEOUT_PROFILE_SINGLE,
+        MapRendererBase.ASYNC_TIMEOUT_PROFILE_BOUNDS,
+        MapRendererBase.ASYNC_TIMEOUT_PROFILE_COMPOSITE,
+    }
+    assert set(MapRendererBase.ASYNC_LIMITS) == {
+        MapRendererBase.ASYNC_LIMITS_PROFILE_SINGLE,
+        MapRendererBase.ASYNC_LIMITS_PROFILE_BATCH,
+    }
+    (base_total, base_connect), _ = MapRendererBase.resolve_async_client_config(
+        timeout_profile=MapRendererBase.ASYNC_TIMEOUT_PROFILE_COMPOSITE,
+        limits_profile=MapRendererBase.ASYNC_LIMITS_PROFILE_BATCH,
+        fallback_timeout=(120.0, 10.0),
+        fallback_limits=(20, 50),
+    )
+    (adaptive_total, adaptive_connect), _ = MapRendererBase.resolve_adaptive_async_client_config(
+        timeout_profile=MapRendererBase.ASYNC_TIMEOUT_PROFILE_COMPOSITE,
+        limits_profile=MapRendererBase.ASYNC_LIMITS_PROFILE_BATCH,
+        fallback_timeout=(120.0, 10.0),
+        fallback_limits=(20, 50),
+        task_count=250,
+    )
+    assert adaptive_total > base_total
+    assert adaptive_connect == base_connect
 
 
 @pytest.mark.slow

@@ -5,8 +5,6 @@ These classes represent various entities like GPX track points, map tiles, and c
 """
 
 import math
-from typing import Dict, Optional, Tuple, Any
-from datetime import datetime
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, Optional, Tuple, Any
