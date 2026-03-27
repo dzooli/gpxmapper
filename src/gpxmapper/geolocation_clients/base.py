@@ -5,6 +5,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, List, Optional, TypeVar
+from urllib.parse import urlparse
 
 import httpx
 
@@ -166,8 +167,8 @@ class HttpxClientMixin(RobustExternalCalls):
         return await self.retry(_do)
 
     async def aclose(self):
-        if self._client is not None and not self._client.is_closed:
-            await self._client.aclose()
+        if self._httpx_client is not None and not self._httpx_client.is_closed:
+            await self._httpx_client.aclose()
 
 
 # ------------- Concrete common base for Nominatim HTTP clients -------------
@@ -196,8 +197,58 @@ class NominatimHttpClientBase(HttpxClientMixin, AbstractGeolocationClient):
         self.backoff_factor = backoff_factor
         self.logger = logger or logging.getLogger(__name__)
 
+    def _build_status_url(self) -> str:
+        """Build the Nominatim status URL."""
+        return f"{self.base_url}/status"
+
+    def _build_reverse_url(self) -> str:
+        """Build the Nominatim reverse-geocoding URL."""
+        return f"{self.base_url}/reverse"
+
+    @staticmethod
+    def _extract_base_domain_and_scheme(base_url: str) -> tuple[str, str]:
+        """Extract geopy-compatible ``(domain, scheme)`` from a base URL."""
+        parsed = urlparse(base_url)
+        domain = parsed.netloc or base_url
+        scheme = parsed.scheme or "https"
+        return domain, scheme
+
+    @staticmethod
+    def _parse_boundingbox(raw_bbox: Any) -> Optional[List[float]]:
+        """Parse Nominatim ``boundingbox`` field into float coordinates."""
+        if raw_bbox is None:
+            return None
+        try:
+            return [float(x) for x in raw_bbox]
+        except (ValueError, TypeError):
+            return None
+
+    def _build_reverse_response(
+            self,
+            data: Dict[str, Any],
+            *,
+            fallback_lat: Optional[float] = None,
+            fallback_lon: Optional[float] = None,
+    ) -> NominatimReverseResponse:
+        """Convert raw Nominatim payload to a typed reverse-geocode response."""
+        lat_value = data.get("lat", fallback_lat)
+        lon_value = data.get("lon", fallback_lon)
+        if lat_value is None or lon_value is None:
+            raise GeolocationServiceUnavailable("Missing latitude/longitude in geocoder response")
+
+        return NominatimReverseResponse(
+            place_id=int(data.get("place_id", 0)),
+            lat=float(lat_value),
+            lon=float(lon_value),
+            display_name=data.get("display_name", ""),
+            address=NominatimAddress(data=data.get("address", {})),
+            boundingbox=self._parse_boundingbox(data.get("boundingbox")),
+            osm_type=data.get("osm_type"),
+            osm_id=int(data["osm_id"]) if "osm_id" in data else None,
+        )
+
     async def get_status(self) -> NominatimStatusResponse:  # type: ignore[override]
-        url = f"{self.base_url}/status"  # type: ignore[attr-defined]
+        url = self._build_status_url()
         resp = await self.request("GET", url)
         return NominatimStatusResponse(raw_html=resp.text)
 

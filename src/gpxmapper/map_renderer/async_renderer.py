@@ -18,7 +18,21 @@ logger = logging.getLogger(__name__)
 
 
 class MapRendererAsync(MapRendererBase):
-    """Map renderer with async HTTP; synchronous methods delegate via asyncio.run where needed."""
+    """Map renderer with async HTTP over httpx.
+
+    For synchronous call sites (e.g. plain functions, threaded code), use the
+    :meth:`fetch_tile`, :meth:`get_tiles_for_bounds`, and
+    :meth:`create_composite_map` methods; each runs the async implementation via
+    :func:`asyncio.run`.
+
+    From **async** code or when a loop is already running, do **not** use those
+    synchronous methods—:func:`asyncio.run` cannot nest. Use
+    :meth:`fetch_tile_async`, :meth:`get_tiles_for_bounds_async`, and
+    :meth:`create_composite_map_async` instead and ``await`` them.
+
+    The synchronous helpers call :meth:`_reject_if_async_context` before invoking
+    :func:`asyncio.run` so misuse fails fast with a clear error.
+    """
 
     def __init__(
             self,
@@ -28,6 +42,19 @@ class MapRendererAsync(MapRendererBase):
     ):
         resolved_server = tile_server if tile_server is not None else DEFAULT_TILE_SERVER
         super().__init__(resolved_server, cache_dir, use_cache)
+
+    @staticmethod
+    def _reject_if_async_context() -> None:
+        """Raise if called from a running event loop (``asyncio.run`` would fail)."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        raise RuntimeError(
+            "MapRendererAsync synchronous methods use asyncio.run() and cannot run inside an "
+            "active event loop. Use fetch_tile_async, get_tiles_for_bounds_async, or "
+            "create_composite_map_async from async code instead."
+        )
 
     async def _fetch_tile_async(
             self, client: httpx.AsyncClient, x: int, y: int, zoom: int
@@ -55,7 +82,11 @@ class MapRendererAsync(MapRendererBase):
             return None
 
     def fetch_tile(self, x: int, y: int, zoom: int) -> Optional[MapTile]:
-        """Fetch a map tile (synchronous interface wrapping async I/O)."""
+        """Fetch a map tile using blocking I/O (runs an event loop via :func:`asyncio.run`).
+
+        Sync-only: must not be used from async code; see :meth:`fetch_tile_async`.
+        """
+        self._reject_if_async_context()
         return asyncio.run(self._fetch_single_tile_async(x, y, zoom))
 
     async def _fetch_single_tile_async(self, x: int, y: int, zoom: int) -> Optional[MapTile]:
@@ -69,7 +100,11 @@ class MapRendererAsync(MapRendererBase):
     def get_tiles_for_bounds(
             self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> List[MapTile]:
-        """Get tiles for bounds (synchronous interface)."""
+        """Get tiles for bounds using blocking I/O (via :func:`asyncio.run`).
+
+        Sync-only: must not be used from async code; see :meth:`get_tiles_for_bounds_async`.
+        """
+        self._reject_if_async_context()
         return asyncio.run(self._get_tiles_for_bounds_async(min_lat, min_lon, max_lat, max_lon, zoom))
 
     async def _get_tiles_for_bounds_async(
@@ -97,7 +132,11 @@ class MapRendererAsync(MapRendererBase):
     def create_composite_map(
             self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> Image.Image:
-        """Create composite map (synchronous interface)."""
+        """Create composite map using blocking I/O (via :func:`asyncio.run`).
+
+        Sync-only: must not be used from async code; see :meth:`create_composite_map_async`.
+        """
+        self._reject_if_async_context()
         return asyncio.run(self._create_composite_map_async(min_lat, min_lon, max_lat, max_lon, zoom))
 
     async def _create_composite_map_async(
@@ -131,17 +170,17 @@ class MapRendererAsync(MapRendererBase):
         return composite
 
     async def fetch_tile_async(self, x: int, y: int, zoom: int) -> Optional[MapTile]:
-        """Direct async interface for fetching a single tile."""
+        """Fetch a single tile (use from ``async`` code instead of :meth:`fetch_tile`)."""
         return await self._fetch_single_tile_async(x, y, zoom)
 
     async def get_tiles_for_bounds_async(
             self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> List[MapTile]:
-        """Direct async interface for fetching tiles for bounds."""
+        """Fetch tiles for bounds (use from ``async`` code instead of :meth:`get_tiles_for_bounds`)."""
         return await self._get_tiles_for_bounds_async(min_lat, min_lon, max_lat, max_lon, zoom)
 
     async def create_composite_map_async(
             self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> Image.Image:
-        """Direct async interface for creating composite maps."""
+        """Build composite map (use from ``async`` code instead of :meth:`create_composite_map`)."""
         return await self._create_composite_map_async(min_lat, min_lon, max_lat, max_lon, zoom)

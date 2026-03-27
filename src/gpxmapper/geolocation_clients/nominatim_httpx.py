@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import httpx
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Dict, Optional
+
+import httpx
 
 from .base import (
     NominatimHttpClientBase,
-    NominatimAddress,
     NominatimReverseResponse,
 )
 
@@ -42,22 +42,7 @@ class AsyncNominatimClient(NominatimHttpClientBase):
         self, lat: float, lon: float, extra_params: Optional[Dict[str, Any]] = None
     ) -> NominatimReverseResponse:
         params = {"lat": lat, "lon": lon, "format": "json", **(extra_params or {})}
-        url = f"{self.base_url}/reverse"
+        url = self._build_reverse_url()
         resp = await self.request("GET", url, params=params)
         data = resp.json()
-        boundingbox: Optional[List[float]] = None
-        if "boundingbox" in data:
-            try:
-                boundingbox = [float(x) for x in data["boundingbox"]]
-            except (ValueError, TypeError):
-                boundingbox = None
-        return NominatimReverseResponse(
-            place_id=int(data["place_id"]),
-            lat=float(data["lat"]),
-            lon=float(data["lon"]),
-            display_name=data.get("display_name", ""),
-            address=NominatimAddress(data=data.get("address", {})),
-            boundingbox=boundingbox,
-            osm_type=data.get("osm_type"),
-            osm_id=int(data["osm_id"]) if "osm_id" in data else None,
-        )
+        return self._build_reverse_response(data)

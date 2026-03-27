@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
-from urllib.parse import urlparse
+from typing import Any, Dict, Optional
 
 from geopy.geocoders import Nominatim as GeopyNominatim
 
 from .base import (
     GeolocationServiceUnavailable,
-    NominatimAddress,
     NominatimHttpClientBase,
     NominatimReverseResponse,
 )
@@ -37,9 +35,7 @@ class AsyncGeopyNominatimClient(NominatimHttpClientBase):
             backoff_factor=backoff_factor,
             logger=logger,
         )
-        parsed = urlparse(self.base_url)
-        domain = parsed.netloc or self.base_url
-        scheme = parsed.scheme or "https"
+        domain, scheme = self._extract_base_domain_and_scheme(self.base_url)
 
         # geopy Nominatim supports domain and scheme
         self._geocoder = GeopyNominatim(
@@ -66,22 +62,7 @@ class AsyncGeopyNominatimClient(NominatimHttpClientBase):
         data: Dict[str, Any] = getattr(loc, "raw", {}) if loc is not None else {}
         if not data:
             raise GeolocationServiceUnavailable("Empty response from geocoder")
-        bb: Optional[List[float]] = None
-        if "boundingbox" in data:
-            try:
-                bb = [float(x) for x in data["boundingbox"]]
-            except (ValueError, TypeError):
-                bb = None
-        return NominatimReverseResponse(
-            place_id=int(data.get("place_id", 0)),
-            lat=float(data.get("lat", lat)),
-            lon=float(data.get("lon", lon)),
-            display_name=data.get("display_name", ""),
-            address=NominatimAddress(data=data.get("address", {})),
-            boundingbox=bb,
-            osm_type=data.get("osm_type"),
-            osm_id=int(data["osm_id"]) if "osm_id" in data else None,
-        )
+        return self._build_reverse_response(data, fallback_lat=lat, fallback_lon=lon)
 
 
 # get_status and aclose inherited from NominatimHttpClientBase

@@ -12,13 +12,25 @@ import requests
 from PIL import Image
 
 from .base import MapRendererBase
-from ..models import GeoPoint, MapTile, Point
+from .constants import DEFAULT_TILE_SERVER
+from ..models import MapTile
 
 logger = logging.getLogger(__name__)
 
 
 class MapRenderer(MapRendererBase):
     """Fetches and renders map tiles using synchronous HTTP and a thread pool."""
+
+    def __init__(
+            self,
+            tile_server: Optional[str] = None,
+            cache_dir: Optional[str] = None,
+            use_cache: bool = True,
+            request_timeout: float = 30.0,
+    ):
+        resolved_server = tile_server if tile_server is not None else DEFAULT_TILE_SERVER
+        super().__init__(resolved_server, cache_dir, use_cache)
+        self.request_timeout = request_timeout
 
     def fetch_tile(self, x: int, y: int, zoom: int) -> Optional[MapTile]:
         """Fetch a map tile from the server or cache."""
@@ -29,7 +41,11 @@ class MapRenderer(MapRendererBase):
         url = self.build_tile_url(x, y, zoom)
 
         try:
-            response = requests.get(url, headers={"User-Agent": "gpxmapper/0.1.0"})
+            response = requests.get(
+                url,
+                headers={"User-Agent": "gpxmapper/0.1.0"},
+                timeout=self.request_timeout,
+            )
             response.raise_for_status()
 
             image = Image.open(io.BytesIO(response.content))
@@ -66,16 +82,9 @@ class MapRenderer(MapRendererBase):
             self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> Image.Image:
         """Create a large composite image from all tiles in the bounding box."""
-        min_geo = GeoPoint(lat=min_lat, lon=min_lon)
-        max_geo = GeoPoint(lat=max_lat, lon=max_lon)
-
-        min_tile_coords = self.deg2num(min_geo.lat, min_geo.lon, zoom)
-        max_tile_coords = self.deg2num(max_geo.lat, max_geo.lon, zoom)
-
-        min_tile = Point(x=min_tile_coords[0], y=max_tile_coords[1])
-        max_tile = Point(x=max_tile_coords[0], y=min_tile_coords[1])
-
-        dimensions = Point(x=(max_tile.x - min_tile.x + 1) * 256, y=(max_tile.y - min_tile.y + 1) * 256)
+        min_tile, max_tile, dimensions = self.compute_composite_geometry(
+            min_lat, min_lon, max_lat, max_lon, zoom
+        )
 
         composite = Image.new("RGB", (dimensions.x, dimensions.y))
 
@@ -92,15 +101,6 @@ class MapRenderer(MapRendererBase):
 
         self.paste_tiles_to_composite(composite, min_tile.x, min_tile.y, max_tile.x, max_tile.y, zoom, tile_dict)
 
-        self.composite_map = composite
-        self.composite_map_info = {
-            "min_x": min_tile.x,
-            "min_y": min_tile.y,
-            "max_x": max_tile.x,
-            "max_y": max_tile.y,
-            "zoom": zoom,
-            "width": dimensions.x,
-            "height": dimensions.y,
-        }
+        self.set_composite_info(min_tile, max_tile, zoom, dimensions, composite)
 
         return composite
