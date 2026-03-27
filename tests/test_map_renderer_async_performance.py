@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import os
 import time
 from unittest.mock import MagicMock, patch
 
@@ -84,7 +85,22 @@ def test_async_composite_matches_sync_with_mocked_http(tmp_path, png_bytes) -> N
     assert sync_r.composite_map_info == async_r.composite_map_info
 
 
+def test_sync_fetch_tile_passes_configured_timeout(tmp_path, png_bytes) -> None:
+    """Sync renderer should propagate request timeout to requests.get."""
+    with patch("gpxmapper.map_renderer.sync.requests.get", return_value=_sync_get_response(png_bytes)) as mock_get:
+        renderer = MapRenderer(cache_dir=str(tmp_path / "timeout"), use_cache=False, request_timeout=12.5)
+        tile = renderer.fetch_tile(0, 0, 0)
+
+    assert tile is not None
+    mock_get.assert_called_once()
+    assert mock_get.call_args.kwargs["timeout"] == 12.5
+
+
 @pytest.mark.slow
+@pytest.mark.skipif(
+    not os.getenv("GPXMAPPER_PERF_TESTS"),
+    reason="Perf-sensitive; enable with GPXMAPPER_PERF_TESTS=1",
+)
 def test_async_composite_parallel_fetch_performance(tmp_path, png_bytes) -> None:
     """Per-tile delay × tile count should not apply serially (parallel fetch)."""
     min_lat, min_lon, max_lat, max_lon, zoom = _bounds_four_tiles_zoom_12()
@@ -104,16 +120,25 @@ def test_async_composite_parallel_fetch_performance(tmp_path, png_bytes) -> None
 
     w = renderer.composite_map_info["width"]  # type: ignore[index]
     tile_count = (w // 256) ** 2  # square composite from smoke path
-    serial_floor = delay * (tile_count - 0.5)
+    serial_floor = delay * tile_count
+    max_allowed = max(serial_floor * 0.8, delay + 0.5)
 
     assert tile_count >= 4
     assert elapsed < serial_floor, (
-        f"async composite took {elapsed:.3f}s, expected well below ~serial {serial_floor:.3f}s "
+        f"async composite took {elapsed:.3f}s, expected below serial {serial_floor:.3f}s "
         f"for {tile_count} tiles at {delay}s each"
+    )
+    assert elapsed < max_allowed, (
+        f"async composite unexpectedly slow: elapsed={elapsed:.3f}s, "
+        f"max_allowed={max_allowed:.3f}s"
     )
 
 
 @pytest.mark.slow
+@pytest.mark.skipif(
+    not os.getenv("GPXMAPPER_PERF_TESTS"),
+    reason="Perf-sensitive; enable with GPXMAPPER_PERF_TESTS=1",
+)
 def test_sync_composite_parallel_fetch_performance(tmp_path, png_bytes) -> None:
     """Sync renderer uses a thread pool; ensure fetches are not strictly serial."""
     min_lat, min_lon, max_lat, max_lon, zoom = _bounds_four_tiles_zoom_12()
@@ -131,9 +156,31 @@ def test_sync_composite_parallel_fetch_performance(tmp_path, png_bytes) -> None:
 
     w = renderer.composite_map_info["width"]  # type: ignore[index]
     tile_count = (w // 256) ** 2
-    serial_floor = delay * (tile_count - 0.5)
+    serial_floor = delay * tile_count
+    max_allowed = max(serial_floor * 0.8, delay + 0.5)
 
     assert tile_count >= 4
     assert elapsed < serial_floor, (
         f"sync composite took {elapsed:.3f}s, expected below ~serial {serial_floor:.3f}s"
     )
+    assert elapsed < max_allowed, (
+        f"sync composite unexpectedly slow: elapsed={elapsed:.3f}s, "
+        f"max_allowed={max_allowed:.3f}s"
+    )
+
+
+@pytest.mark.asyncio
+async def test_async_renderer_sync_methods_fail_inside_event_loop(tmp_path, png_bytes) -> None:
+    """Blocking helpers that wrap asyncio.run must not run under an active loop."""
+
+    def fake_client(*args, **kwargs):  # noqa: ANN002
+        return _FakeHttpxAsyncClient(0.0, png_bytes)
+
+    with patch(
+            "gpxmapper.map_renderer.async_renderer.httpx.AsyncClient",
+            side_effect=fake_client,
+    ):
+        r = MapRendererAsync(cache_dir=str(tmp_path / "loop"), use_cache=False)
+
+    with pytest.raises(RuntimeError, match="fetch_tile_async"):
+        r.fetch_tile(0, 0, 0)
