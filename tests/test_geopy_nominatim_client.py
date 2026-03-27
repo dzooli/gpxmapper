@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 import pytest_asyncio
 
-from src.gpxmapper.geolocation_clients import (
+from gpxmapper.geolocation_clients import (
     AsyncGeopyNominatimClient,
     GeolocationServiceUnavailable,
     NominatimAddress,

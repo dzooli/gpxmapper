@@ -1,6 +1,6 @@
 import pytest_asyncio
 
-from src.gpxmapper.geolocation_clients import AsyncNominatimClient
+from gpxmapper.geolocation_clients import AsyncNominatimClient
 
 
 @pytest_asyncio.fixture
