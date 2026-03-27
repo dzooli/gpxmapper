@@ -17,13 +17,45 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 - Add scrolling text from a text file with customizable speed
 - Customize text alignment and font scale
 - Customize the font of text overlays (TTF only)
-- Cache map tiles for faster rendering
-- Clear cache to free up disk space
+- Cache map tiles for faster rendering (default directory is OS-specific; see **Map tile cache** below)
+- Clear cache to free up disk space via `gpxmapper clear-cache`
 - Performance optimizations:
   - Parallel frame generation using multiple threads
+  - Async, concurrent map tile downloads (`httpx`) in the video pipeline
   - Efficient position interpolation with binary search
   - Caching of interpolated positions
   - Batch processing of frames for better memory management
+
+## Library layout
+
+- **`gpxmapper.map_renderer`** — `MapRendererBase` (shared geometry, cache path, rendering helpers), `MapRenderer` (
+  sync), `MapRendererAsync` (async), and **`MapRendererFactory`** (`register_renderer` / `create_renderer`, kinds
+  `sync` | `async`). Video generation uses the **async** renderer by default.
+- **Default tile cache path** — Implemented once on `MapRendererBase.resolve_default_cache_directory()`; CLI
+  `clear-cache` uses the same helper so the path always matches renderers.
+- **`gpxmapper.models`** — Dataclasses such as **`TextConfig`** (use this module in programmatic examples, not
+  `gpxmapper.cli`).
+- **`gpxmapper.geolocation_clients`** — Nominatim-style clients and **`GeolocationClientFactory`** (registry pattern
+  analogous to map renderers).
+
+### Map tile cache locations (default)
+
+When `cache_dir` is not overridden, tiles are stored under:
+
+- **Windows:** `%LOCALAPPDATA%\gpxmapper\cache` (fallback: `%USERPROFILE%\AppData\Local\gpxmapper\cache`)
+- **Linux:** `~/.cache/gpxmapper`
+- **Other:** `~/.gpxmapper/cache`
+
+## Cursor AI / project rules
+
+Instructions for **Cursor** (and pointers for Copilot / GitHub) are versioned under **`.cursor/rules/`**:
+
+- **`gpxmapper-core.mdc`** — always applied: tooling, architecture, workflow
+- **`python-standards.mdc`** — when editing Python source (`*.py`)
+- **`git-github-workflow.mdc`** — always applied: conventional commits, branches, PRs
+
+**`AGENTS.md`**, **`.cursorrules`**, and **`.github/git-commit-instructions.md`** only point here. Update the **`.mdc`**
+files when changing automation rules.
 
 ## Installation
 
@@ -171,7 +203,8 @@ Note: The timestamp color is fixed to black (0,0,0) in the command-line interfac
 
 ### `clear-cache` command
 
-Clears the map tiles cache directory to free up disk space. The cache directory is automatically determined based on the operating system.
+Clears the map tiles cache directory to free up disk space. The path is the same default used by map renderers (
+`MapRendererBase.resolve_default_cache_directory()`), so it stays consistent regardless of sync vs async tile fetching.
 
 ## Programmatic Usage
 
@@ -181,8 +214,8 @@ GPXMapper can also be used programmatically in your Python code. Here's how to u
 
 ```python
 from gpxmapper.gpx_parser import GPXParser
+from gpxmapper.models import TextConfig
 from gpxmapper.video_generator import VideoGenerator
-from gpxmapper.cli import TextConfig
 
 # Parse GPX file
 gpx_path = "my_bike_ride.gpx"
@@ -216,8 +249,8 @@ print(f"Video generated successfully: {output_path}")
 
 ```python
 from gpxmapper.gpx_parser import GPXParser
+from gpxmapper.models import TextConfig
 from gpxmapper.video_generator import VideoGenerator
-from gpxmapper.cli import TextConfig
 
 # Parse GPX file
 gpx_path = "my_hike.gpx"

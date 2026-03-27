@@ -1,0 +1,75 @@
+---
+description: GPXMapper project context, tooling, layout, architecture, and agent workflow (always on)
+alwaysApply: true
+---
+
+# GPXMapper — core context
+
+## What this project is
+
+CLI tool (**Typer**, `gpxmapper`) that builds a short video from a GPX track: OpenStreetMap tiles, moving marker, optional title / scrolling text / timed captions, reverse geocoding (Nominatim), TrueType fonts. **Python 3.12+**, **MIT**. Windows exe via **PyInstaller** / GitHub Actions.
+
+## Tooling (prefer running commands, not only suggesting them)
+
+- **Env:** `uv`; dev deps in `[dependency-groups] dev`; virtualenv **`.venv`**
+- **Lint/format:** `ruff`
+- **Tests:** `pytest`, `pytest-cov`, `pytest-asyncio`, `pytest-httpx`, `pytest-mock` — `pytest.ini`, `tests/conftest.py`
+- **Docs:** **mkdocs** — `docs/userdocs`, `docs/devdocs`, build `docs/build/`
+- **CI / quality:** GitHub Actions, SonarCloud
+
+Run: `uv run pytest` (coverage roots: `src/gpxmapper` per `pytest.ini`).
+
+## Layout & packaging
+
+- Sources: `src/gpxmapper/` → installable package **`gpxmapper`** (`package-dir` = `src` in `pyproject.toml`)
+- **Imports:** `from gpxmapper...` only — never `from src.gpxmapper...`
+- **Tests:** `tests/`; **examples:** `examples/`; **config:** `pyproject.toml`, `pytest.ini`
+
+## Architecture (modules)
+
+| Area | Notes |
+|------|--------|
+| `cli/` | Typer app: `generate`, `info`, `clear-cache` |
+| `gpx_parser.py` | GPX → track points |
+| `map_renderer/` | `MapRendererBase` (ABC, cache path + geometry + rendering). `MapRenderer` (sync, `requests` + threads). `MapRendererAsync` (`httpx`). `MapRendererFactory`: `register_renderer` / `create_renderer`; kinds `sync` \| `async` registered from `map_renderer/__init__.py`. Default cache: `MapRendererBase.resolve_default_cache_directory()` / `resolve_cache_directory()` |
+| `video_generator.py` | Frames, OpenCV writer; uses `MapRendererFactory.create(MapRendererKind.ASYNC)` for tiles |
+| `font_manager.py` | PIL / TTF text |
+| `models.py` | e.g. **`TextConfig`** — import here in library/examples, **not** from `cli` |
+| `geolocation_clients/` | `AbstractGeolocationClient`, `GeolocationClientFactory`, Nominatim clients (registry pattern like map renderers) |
+
+**`clear-cache`:** uses `MapRendererBase.resolve_default_cache_directory()` (no renderer instance; path matches all backends).
+
+## Tests (current focus)
+
+- Geolocation clients (HTTP mocked).
+- `tests/test_map_renderer_async_performance.py` — sync vs async map parity and parallel fetch smoke (mocked HTTP).
+
+## External services
+
+- **Tiles:** default URL template in `gpxmapper.map_renderer.constants` (OpenStreetMap).
+- **Reverse Geocoding:** Nominatim-compatible HTTP; respect usage policy and **User-Agent**.
+
+## Agent workflow
+
+- Plan in steps for non-trivial work.
+- **Minimal, on-task changes** — no drive-by refactors or unrelated files.
+- **Read surrounding code** first; match naming, types, imports, comment style.
+- **Reuse** helpers; extend existing factories/registries in the same pattern.
+- Add/update **tests** when behavior changes.
+- Use a **knowledge graph** in the product if available for project/troubleshooting notes.
+
+## Communication
+
+- Concise technical prose; cite existing code with Cursor code references: start line, end line, and file path (fence on its own line, no list prefix on the fence).
+- Do **not** add markdown/docs files unless the user asks.
+
+## Human / product docs
+
+End-user and troubleshooting detail: **README.md**, **docs/**.
+
+## Other Cursor rules in this repo
+
+- **`python-standards.mdc`** — Python (`**/*.py`)
+- **`git-github-workflow.mdc`** — commits, branches, PRs (GitHub)
+
+Together with this file, they form the **canonical Cursor rule set** for automation.

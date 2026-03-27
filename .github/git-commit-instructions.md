@@ -1,24 +1,9 @@
-## Commit message rules
-- Use the conventional commit format: `[<issue-number>] <type>(<scope>): <description>`
-- Determine the issue number from the branch name if possible. The issue number is like PROJECTKY-XXXX in the branch name.
-- Issue number is mandatory
-- Scope: the affected module(s)
-- Types: feat, fix, docs, style, refactor, test, chore, perf
-- Keep the description concise (under 50 characters)
-- Use imperative mood (e.g., "add" not "added" or "adds")
-- Don't end with a period
-- Use lowercase for the first word unless it's a proper noun
-- Provide more details in the commit body, separated by a blank line
+# Git & GitHub conventions
 
-## Branch naming conventions
-- Use kebab-case (lowercase with hyphens)
-- Follow the pattern: `<type>/<issue-number>-<short-description>` or `<issue-number>-<short-description>`
-- Types: feature, bugfix, hotfix, release, support
-- Example: `feature/123-add-dark-mode`, `PROJECT-123-add-dark-mode`
+All conventions for **commits, branches, and pull requests** live in the Cursor project rules (single source of truth):
 
-## Pull request guidelines
-- Link related issues using keywords (Fixes #123, Closes #456)
-- Provide a clear description of changes
-- Add screenshots for UI changes
-- Ensure all CI checks pass before requesting review
-- Keep PRs focused and small when possible
+**[`.cursor/rules/git-github-workflow.mdc`](../.cursor/rules/git-github-workflow.mdc)**
+
+Edit that file to change rules. Broader coding context: [
+`.cursor/rules/gpxmapper-core.mdc`](../.cursor/rules/gpxmapper-core.mdc), [
+`.cursor/rules/python-standards.mdc`](../.cursor/rules/python-standards.mdc).
