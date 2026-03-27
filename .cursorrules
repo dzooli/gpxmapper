@@ -1,0 +1,9 @@
+# Legacy entrypoint — rules live under `.cursor/rules/`
+
+Cursor loads project rules from **`.cursor/rules/*.mdc`**.
+
+- **`gpxmapper-core.mdc`** — always applied (project + workflow)
+- **`python-standards.mdc`** — Python files (`**/*.py`)
+- **`git-github-workflow.mdc`** — always applied (commits, branches, PRs)
+
+Do not duplicate long policy here; edit the `.mdc` files instead.
