@@ -5,6 +5,7 @@ import pytest_asyncio
 
 from gpxmapper.geolocation_clients import (
     AsyncNominatimClient,
+    GeolocationClientSingleton,
     GeolocationServiceUnavailable,
     NominatimAddress,
     NominatimReverseResponse,
@@ -20,7 +21,28 @@ async def client():
         yield c
 
 
+@pytest.fixture(autouse=True)
+def reset_geolocation_singleton():
+    """Isolate tests from process-wide singleton state."""
+    GeolocationClientSingleton.clear_instance()
+    yield
+    GeolocationClientSingleton.clear_instance()
+
+
 class TestAsyncNominatimClient:
+    def test_singleton_get_instance_without_set_raises(self):
+        with pytest.raises(RuntimeError, match="No geolocation client instance set"):
+            GeolocationClientSingleton.get_instance()
+
+    def test_singleton_set_get_and_clear(self):
+        client = AsyncNominatimClient()
+        stored = GeolocationClientSingleton.get_instance(client)
+        assert stored is client
+        assert GeolocationClientSingleton.get_instance() is client
+        GeolocationClientSingleton.clear_instance()
+        with pytest.raises(RuntimeError, match="No geolocation client instance set"):
+            GeolocationClientSingleton.get_instance()
+
     @pytest.mark.asyncio
     async def test_reverse_geocode_success(self, client):
         mock_response = Mock()

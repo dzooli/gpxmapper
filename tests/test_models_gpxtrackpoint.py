@@ -91,3 +91,9 @@ def test_has_flags_and_to_dict_serialization() -> None:
     assert data["ele"] == pytest.approx(145.2)
     assert data["time"] == t.isoformat()
     assert data["extensions"] == ext
+
+    empty_data = p_empty.to_dict()
+    assert empty_data["lat"] == pytest.approx(47.5)
+    assert empty_data["lon"] == pytest.approx(19.0)
+    assert empty_data["time"] is None
+    assert empty_data["extensions"] == {}

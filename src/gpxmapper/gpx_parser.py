@@ -1,9 +1,10 @@
 """GPX file parsing module for extracting track data."""
 
-import gpxpy
-from typing import List, Tuple, Optional
-from datetime import datetime
 import logging
+from datetime import datetime
+from typing import List, Tuple, Optional
+
+import gpxpy
 
 from .models import GPXTrackPoint
 
@@ -91,13 +92,12 @@ class GPXParser:
                 logger.info(f"Parsed {len(self.track_points)} track points from {self.gpx_file_path}")
                 self._parsed = True
                 return self.track_points
-
         except FileNotFoundError:
             logger.error(f"GPX file not found: {self.gpx_file_path}")
             raise
         except Exception as e:
             logger.error(f"Error parsing GPX file: {e}")
-            raise ValueError(f"Invalid GPX file: {e}")
+            raise ValueError(f"Invalid GPX file: {e}") from e
 
     def get_time_bounds(self) -> Tuple[Optional[datetime], Optional[datetime]]:
         """Get the start and end times of the track.
