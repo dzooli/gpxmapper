@@ -91,8 +91,9 @@ class MapRendererBase(ABC):
         if not tile_path:
             return None
         try:
-            img = Image.open(tile_path)
-            return self.ensure_rgb(img)
+            with Image.open(tile_path) as img:
+                img.load()
+                return self.ensure_rgb(img.copy())
         except Exception as e:
             logger.warning(f"Failed to load cached tile: {e}")
             return None
