@@ -20,7 +20,7 @@ Usable for demonstrating the track you have taken or for sharing with others.
 Contributions are welcome! Please see the [Contributing Guide](contributing.md) for details on how to contribute to the
 project.
 
-## Copyrights
+## License
 
 MIT License
 
