@@ -81,12 +81,19 @@ class GeolocationClientFactory:
 
 
 class GeolocationClientSingleton:
+    """Process-wide geolocation client holder.
+
+    Prefer explicit dependency injection at call sites when possible. This helper
+    exists for legacy wiring and should be used sparingly to avoid hidden global state.
+    """
+
     _instance: Optional[AbstractGeolocationClient] = None
 
     @classmethod
     def get_instance(
         cls, client: Optional[AbstractGeolocationClient] = None
     ) -> AbstractGeolocationClient:
+        """Return the singleton instance, optionally setting it first."""
         if client is not None:
             cls._instance = client
         if cls._instance is None:
@@ -95,6 +102,7 @@ class GeolocationClientSingleton:
 
     @classmethod
     def clear_instance(cls):
+        """Clear singleton state (primarily for tests and controlled lifecycle resets)."""
         cls._instance = None
 
 
