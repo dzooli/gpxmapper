@@ -1,7 +1,7 @@
 # GPXMapper Project Configuration
 # ------------------------------
 # Build:
-#   - Development: pip install -e .
+#   - Development: pip install -e .   (or: uv sync)
 #   - Executable: python build_exe.py
 #   - Executable (alt): pyinstaller exe_entry_point.py --name=gpxmapper --onefile --console
 #   - Package: python -m build
@@ -14,42 +14,80 @@ build-backend = "setuptools.build_meta"
 name = "gpxmapper"
 version = "0.2.0"
 description = "GPX to video mapper - creates videos from GPX tracks"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
 authors = [
     { name = "Zoltan Fabian", email = "zoltan.dzooli.fabian@gmail.com" },
 ]
-readme = "README.md"
-license = "MIT"
-requires-python = ">=3.12"
-dependencies = [
-    "gpxpy>=1.5.0",
-    "typer>=0.9.0",
-    "opencv-python>=4.8.0",
-    "requests>=2.31.0",
-    "pillow>=10.0.0",
-    "numpy>=1.24.0",
-    "httpx==0.28.1",
-    "geopy>=2.4.1",
+keywords = [
+    "gpx",
+    "gps",
+    "mapping",
+    "visualization",
+    "video",
+    "openstreetmap",
+    "tracks",
+    "geospatial",
 ]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
-    "Operating System :: OS Independent",
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: End Users/Desktop",
     "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Multimedia :: Video",
     "Topic :: Scientific/Engineering :: GIS",
     "Topic :: Scientific/Engineering :: Visualization",
     "Topic :: Utilities",
 ]
-keywords = ["gpx", "gps", "mapping", "visualization", "video", "openstreetmap", "tracks", "geospatial"]
+dependencies = [
+    "geopy>=2.4.1",
+    "gpxpy>=1.5.0",
+    "httpx==0.28.1",
+    "numpy>=1.24.0",
+    "opencv-python>=4.8.0",
+    "pillow>=10.0.0",
+    "requests>=2.31.0",
+    "typer>=0.9.0",
+]
 
 [project.scripts]
 gpxmapper = "gpxmapper.cli:app"
 
+[dependency-groups]
+dev = [
+    # Release & repo hygiene
+    "commitizen>=4.7.0",
+    "pre-commit>=4.2.0",
+    "pyinstaller>=6.0.0",
+    "tomli>=2.2.1",
+    # Tests
+    "pytest>=9.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-httpx>=0.35.0",
+    "pytest-mock",
+    # Docs
+    "mkdocs>=1.6.0",
+    "mkdocs-click==0.9.0",
+    "mkdocs-exclude==1.0.2",
+    "mkdocs-gen-files>=0.5.0",
+    "mkdocs-literate-nav>=0.6.1",
+    "mkdocs-material>=9.5.0",
+    "mkdocs-material-extensions==1.3.1",
+    "mkdocs-section-index>=0.3.8",
+    "mkdocs-typer2==0.1.5",
+    "mkdocstrings>=0.25.0",
+    "mkdocstrings-python>=1.10.0",
+    "pymdown-extensions>=10.8",
+]
+
 [tool.pyinstaller]
 # PyInstaller configuration for building standalone executable
+entry_point = "exe_entry_point.py"
 options = [
     "--name=gpxmapper",
     "--onefile",
@@ -63,33 +101,15 @@ options = [
     "--hidden-import=zoneinfo",
     "--specpath=.",
 ]
-entry_point = "exe_entry_point.py"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
-packages = ["gpxmapper", "gpxmapper.geolocation_clients", "gpxmapper.map_renderer"]
 
-[dependency-groups]
-dev = [
-    "commitizen>=4.7.0",
-    "pre-commit>=4.2.0",
-    "pyinstaller>=6.0.0",
-    "tomli>=2.2.1",
-    "pytest >= 9.0.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.1.0",
-    "pytest-httpx>=0.35.0",
-    "pytest-mock",
-    "mkdocs>=1.6.0",
-    "mkdocs-material>=9.5.0",
-    "mkdocstrings>=0.25.0",
-    "mkdocstrings-python>=1.10.0",
-    "mkdocs-gen-files>=0.5.0",
-    "mkdocs-literate-nav>=0.6.1",
-    "mkdocs-section-index>=0.3.8",
-    "pymdown-extensions>=10.8",
-    "mkdocs-click==0.9.0",
-    "mkdocs-material-extensions==1.3.1",
-    "mkdocs-typer2==0.1.5",
-    "mkdocs-exclude==1.0.2",
-]
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# CVE-2025-71176: vulnerable PyPI releases through 9.0.2; no patched wheel on PyPI yet.
+# Pin pytest to upstream fix branch until a release > 9.0.2 is published (pytest-dev/pytest#14279).
+# Then drop this [tool.uv.sources] entry and set e.g. pytest>=9.0.3 in dev dependencies.
+[tool.uv.sources]
+pytest = { git = "https://github.com/pytest-dev/pytest.git", rev = "76a9dd01e33162c54d6824f705e0f9eb2e24228a" }
