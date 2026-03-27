@@ -7,7 +7,6 @@ from typing import Optional, Tuple
 import typer
 
 from ..gpx_parser import GPXParser
-from ..map_renderer import MapRenderer
 from ..models import TextConfig, VideoConfig, MapConfig
 from ..video_generator import VideoGenerator
 
@@ -144,7 +143,7 @@ def parse_color(color_str: str) -> Tuple[int, int, int]:
         r, g, b = map(int, color_str.split(","))
         if not all(0 <= c <= 255 for c in (r, g, b)):
             raise ValueError("Color values must be between 0 and 255")
-        return (r, g, b)
+        return r, g, b
     except Exception as e:
         logger.error(f"Invalid color format: {e}")
         raise typer.BadParameter("Color must be in format 'R,G,B' with values 0-255")

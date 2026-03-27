@@ -1,0 +1,34 @@
+---
+description: Python style, SOLID, and gpxmapper-specific code patterns
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Python standards (gpxmapper)
+
+## Design goals
+
+- **SOLID**, **DRY**, **KISS**, **YAGNI**; abstractions at boundaries, not over-engineering.
+- Target **cognitive complexity below 15** and **function length below 30 lines** where tooling reports it.
+- Prefer **slotted dataclasses** when they fit; **generators/iterators** for streaming and memory.
+- Appropriate data structures; avoid premature optimization.
+
+## SOLID (short)
+
+- **S**ingle responsibility per type/function.
+- **O**pen for extension, closed for unnecessary modification (e.g. new renderer → `register_renderer`).
+- **L**iskov: subclasses honor base contracts (`MapRendererBase`, `AbstractGeolocationClient`).
+- **I**nterface segregation: small, focused ABCs.
+- **D**ependency inversion: depend on ABCs/factories, not ad-hoc concrete imports at call sites where a factory exists.
+
+## gpxmapper patterns
+
+- **Map renderers:** subclass `MapRendererBase`; register with `MapRendererFactory.register_renderer(name, cls)` from package init or extension code; build with `create_renderer` / `MapRendererFactory.create(...)`.
+- **Geolocation:** use `GeolocationClientFactory` the same way for new client types.
+- **Config / DTOs:** `gpxmapper.models` (`TextConfig`, etc.) — not `gpxmapper.cli`.
+- **Tile cache:** any change to default paths must go through `MapRendererBase.resolve_default_cache_directory()` / `resolve_cache_directory()` so CLI and renderers stay aligned.
+
+## Imports
+
+- Package root: `gpxmapper` only (sources under `src/gpxmapper/`).
+- Tests: import the public API (`from gpxmapper....`) like app code.

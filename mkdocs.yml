@@ -1,0 +1,66 @@
+site_name: GPXMapper
+site_description: "GPX to video mapper - creates videos from GPX tracks"
+site_author: "Zoltan Fabian"
+repo_url: https://github.com/dzooli/gpxmapper
+edit_uri: ""
+
+# Source docs directory
+docs_dir: docs/userdocs
+# Build output directory
+site_dir: docs/build
+
+# Material theme
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          setup_commands:
+            - import sys
+            - sys.path.append("src")
+          options:
+            show_root_heading: true
+            show_source: true
+            docstring_style: google
+            separate_signature: true
+            members_order: source
+            inherited_members: true
+            merge_init_into_class: true
+            show_if_no_docstring: true
+  - gen-files:
+      scripts:
+        - docs/gen_api.py
+  - literate-nav:
+      nav_file: reference/SUMMARY.md
+  - section-index
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - tables
+  - attr_list
+  - footnotes
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.snippets
+  - pymdownx.tabbed
+  - pymdownx.emoji
+
+nav:
+  - Home: index.md
+  - Reference: reference/

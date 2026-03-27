@@ -4,15 +4,14 @@ This script shows how to use the GPXMapper module to generate videos from GPX tr
 It includes examples of basic usage as well as advanced features like adding titles and captions.
 """
 
-import os
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
 
 # Import from the installed package
 from gpxmapper.gpx_parser import GPXParser
+from gpxmapper.models import TextConfig
 from gpxmapper.video_generator import VideoGenerator
-from gpxmapper.cli import TextConfig
 
 # Set up logging
 logging.basicConfig(
@@ -85,8 +84,9 @@ def generate_basic_video(gpx_file_path, output_file_path=None, duration_seconds=
     print(f"Video generated successfully: {output_path}")
     return output_path
 
-def generate_advanced_video(gpx_file_path, output_file_path=None, duration_seconds=60, 
-                           title_text="My GPX Track", captions_file=None):
+
+def generate_advanced_video(gpx_file_path, output_file_path=None, duration_seconds=60,
+                            title_text="My GPX Track", captions_filename=None):
     """Generate a video from a GPX file with advanced features like title and captions.
 
     Args:
@@ -94,7 +94,7 @@ def generate_advanced_video(gpx_file_path, output_file_path=None, duration_secon
         output_file_path: Path to the output video file (default: GPX filename with _advanced.mp4 extension)
         duration_seconds: Duration of the output video in seconds
         title_text: Text to display as a title on the video
-        captions_file: Path to a CSV file containing captions with timestamps
+        captions_filename: Path to a CSV file containing captions with timestamps
 
     Returns:
         Path to the generated video file
@@ -148,7 +148,7 @@ def generate_advanced_video(gpx_file_path, output_file_path=None, duration_secon
         marker_color=(0, 0, 255),  # Blue marker
         marker_size=15,  # Larger marker
         text_config=text_config,
-        captions_file=captions_file
+        captions_file=captions_filename
     )
 
     output_path = video_generator.generate_video(track_points, duration_seconds)
@@ -188,7 +188,7 @@ if __name__ == "__main__":
             gpx_file_path=gpx_file,
             duration_seconds=30,  # Short duration for quick example
             title_text="My GPX Adventure",
-            captions_file=str(captions_file)
+            captions_filename=str(captions_file)
         )
     else:
         print(f"Sample captions file not found: {captions_file}")

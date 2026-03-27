@@ -6,8 +6,8 @@ from pathlib import Path
 
 import typer
 
-from ..map_renderer import MapRenderer
 from . import app
+from ..map_renderer import MapRendererBase
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +19,7 @@ def clear_cache():
     The cache directory is automatically determined based on the operating system.
     """
     try:
-        # Initialize MapRenderer to get the default cache directory
-        renderer = MapRenderer()
-        cache_dir = renderer.cache_dir
+        cache_dir = MapRendererBase.resolve_default_cache_directory()
 
         if not os.path.exists(cache_dir):
             typer.echo(f"Cache directory does not exist: {cache_dir}")

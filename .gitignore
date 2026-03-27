@@ -23,6 +23,8 @@
 .idea/**/dynamic.xml
 .idea/**/uiDesigner.xml
 .idea/**/dbnavigator.xml
+.idea/**/codestream.xml
+.idea/**/misc.xml
 
 # Gradle
 .idea/**/gradle.xml
@@ -156,3 +158,5 @@ __pypackages__/
 
 
 
+/coverage.lcov
+/site
