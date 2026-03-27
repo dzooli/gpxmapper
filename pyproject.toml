@@ -67,7 +67,7 @@ entry_point = "exe_entry_point.py"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
-packages = ["gpxmapper", "gpxmapper.geolocation_clients"]
+packages = ["gpxmapper", "gpxmapper.geolocation_clients", "gpxmapper.map_renderer"]
 
 [dependency-groups]
 dev = [
@@ -75,7 +75,7 @@ dev = [
     "pre-commit>=4.2.0",
     "pyinstaller>=6.0.0",
     "tomli>=2.2.1",
-    "pytest",
+    "pytest >= 9.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.1.0",
     "pytest-httpx>=0.35.0",
