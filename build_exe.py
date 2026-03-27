@@ -1,7 +1,7 @@
-import subprocess
 import os
-import sys
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 # Try to import tomli for TOML parsing
@@ -13,7 +13,7 @@ except ImportError:
     try:
         subprocess.check_call(["uv", "pip", "install", "tomli"])
         import tomli
-    except Exception as e:
+    except Exception:
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", "tomli"])
             import tomli

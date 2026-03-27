@@ -2,6 +2,7 @@
 
 import logging
 import sys
+
 import typer
 
 # Set up logging
@@ -18,9 +19,9 @@ app = typer.Typer(invoke_without_command=True, no_args_is_help=True,
                   help="GPX to video mapper - creates videos from GPX tracks")
 
 # Import commands
-from .generate import generate
-from .info import info
-from .clear_cache import clear_cache
+from .generate import generate as generate
+from .info import info as info
+from .clear_cache import clear_cache as clear_cache
 
 if __name__ == "__main__":
     app()
