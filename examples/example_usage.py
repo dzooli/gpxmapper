@@ -4,15 +4,14 @@ This script shows how to use the GPXMapper module to generate videos from GPX tr
 It includes examples of basic usage as well as advanced features like adding titles and captions.
 """
 
-import os
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
 
 # Import from the installed package
 from gpxmapper.gpx_parser import GPXParser
+from gpxmapper.models import TextConfig
 from gpxmapper.video_generator import VideoGenerator
-from gpxmapper.cli import TextConfig
 
 # Set up logging
 logging.basicConfig(
