@@ -49,7 +49,7 @@ dependencies = [
     "httpx==0.28.1",
     "numpy>=1.24.0",
     "opencv-python>=4.8.0",
-    "pillow>=10.0.0",
+    "pillow>=12.2.0",
     "requests>=2.31.0",
     "typer>=0.9.0",
 ]
