@@ -10,6 +10,7 @@ Full task list and decisions: [`docs/superpowers/plans/2026-06-07-nominatim-geol
 
 ## Compressed behavior (for agents)
 
+- **Local Nominatim setup (repo):** `nominatim/start_server.sh` — Docker-based **`mediagis/nominatim:5.1`**, port **8080**, default **`PBF_URL`** Hungary Geofabrik extract (override for other regions). `nominatim/verify_local_hungary.sh` — optional **`/status`** + sample reverse checks (`NOMINATIM_URL` override). **`nominatim/start_server.bat`** — Windows counterpart. **Release ZIP** (`.github/workflows/build.yml`, `release.yml`): copies `start_server.bat`, both `.sh` scripts, and **`doc/USER_GUIDE.md`** next to `gpxmapper.exe` (source: `install/doc/USER_GUIDE.md`). Same story as end-user README / `docs/userdocs/index.md`.
 - **`NOMINATIM_SERVER`**: default `http://localhost:8080`; public `https://nominatim.openstreetmap.org` documented.
 - **`--geolocate`**: conflicts with `--scrolling-text` / `--scrolling-speed`.
 - **`/status`**: up to **3** HTTP attempts; on total failure → stderr error + **`typer.confirm`** (default abort) to continue **without** geolocation; no TTY → abort.
@@ -20,7 +21,7 @@ Full task list and decisions: [`docs/superpowers/plans/2026-06-07-nominatim-geol
 
 ## Key files (when implemented)
 
-`nominatim_config.py`, `geolocation_overlay.py`, `geolocation_label_format.py`, `reverse_geocode_cache.py`, `video_generator.py` (`VideoCaptioner` + `VideoGenerator`), `cli/generate.py`, `cli/utils.py`, `cli/__init__.py` (import order), `cli/log_level.py`, `models.py` (`TextConfig.geolocate`).
+`nominatim_config.py`, `geolocation_overlay.py`, `geolocation_label_format.py`, `reverse_geocode_cache.py`, `video_generator.py` (`VideoCaptioner` + `VideoGenerator`), `cli/generate.py`, `cli/utils.py`, `cli/__init__.py` (import order), `cli/log_level.py`, `models.py` (`TextConfig.geolocate`), `nominatim/start_server.bat`, `install/doc/USER_GUIDE.md`, `.github/workflows/build.yml` / `release.yml` (ZIP layout).
 
 ## Verification (2026-06-07)
 

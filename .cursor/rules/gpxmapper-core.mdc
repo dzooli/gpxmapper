@@ -14,7 +14,7 @@ CLI tool (**Typer**, `gpxmapper`) that builds a short video from a GPX track: Op
 - **Env:** `uv`; dev deps in `[dependency-groups] dev`; virtualenv **`.venv`**
 - **Lint/format:** `ruff` (`[tool.ruff]` in `pyproject.toml`). Do not rely on VS Code’s legacy **Flake8** linter for the same rules — workspace disables it; Flake8 CLI does not read `pyproject.toml` for line length (use `.flake8` if you run Flake8).
 - **Tests:** `pytest`, `pytest-cov`, `pytest-asyncio`, `pytest-httpx`, `pytest-mock` — `pytest.ini`, `tests/conftest.py`
-- **Docs:** **mkdocs** — `docs/userdocs`, `docs/devdocs`, build `docs/build/`
+- **Docs:** **MkDocs 1.x** (`mkdocs>=1.6,<2` in dev deps — avoids accidental MkDocs 2 installs). Build with **`scripts/build-docs.ps1`** / **`scripts/build-docs.sh`** (sets `NO_MKDOCS_2_WARNING=1` and `DISABLE_MKDOCS_2_WARNING=true`) or export those then `uv run mkdocs build` — sources `docs/userdocs`, output `docs/build/`
 - **CI / quality:** GitHub Actions, SonarCloud
 
 Run: `uv run pytest` (coverage roots: `src/gpxmapper` per `pytest.ini`).

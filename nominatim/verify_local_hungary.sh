@@ -2,6 +2,8 @@
 # Quick health check for a local Nominatim instance (e.g. Docker on port 8080).
 # Default extract in start_server.sh is hungary-latest.osm.pbf — these probes
 # expect Hungarian results and country_code "hu".
+# Repository: ./nominatim/verify_local_hungary.sh from repo root.
+# Windows release ZIP: same file is copied next to gpxmapper.exe — run:  bash verify_local_hungary.sh
 #
 # Usage:
 #   ./nominatim/verify_local_hungary.sh

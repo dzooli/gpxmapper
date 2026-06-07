@@ -39,7 +39,8 @@ class VideoCaptioner:
         Args:
             width: Width of the video frame
             height: Height of the video frame
-            timestamp_color: RGB color tuple for the timestamp text
+            timestamp_color: RGB color tuple for all overlay text (timestamp, title,
+                captions, scrolling text, geolocation)
             font_scale: Font scale for all text (timestamp, title, captions)
             title_text: Optional text to display as a title on the video
             text_align: Alignment of all text (title, captions) ("left", "center", or "right")

@@ -71,6 +71,11 @@ def generate(
         "--marker-color", "-c",
         help="Color of the position marker as R,G,B (e.g., '255,0,0' for red)"
     ),
+    text_color: str = typer.Option(
+        "0,0,0",
+        "--text-color", "-tc",
+        help="R,G,B color for all text overlays (timestamp, title, captions, scrolling, geolocation), 0-255 per channel (default 0,0,0 black).",
+    ),
     # Text rendering options
     font_scale: float = typer.Option(
         0.7,
@@ -145,8 +150,9 @@ def generate(
     The GPX timeline will be mapped to the video duration.
     """
     try:
-        # Parse marker color
+        # Parse marker and text overlay colors (same R,G,B format as --marker-color)
         marker_color_tuple = parse_color(marker_color)
+        text_color_tuple = parse_color(text_color)
 
         if geolocate and (scrolling_text is not None or scrolling_speed is not None):
             raise typer.BadParameter(
@@ -168,6 +174,7 @@ def generate(
             font_scale=font_scale,
             title_text=title_text,
             text_align=text_align,
+            timestamp_color=f"{text_color_tuple[0]},{text_color_tuple[1]},{text_color_tuple[2]}",
             font_file=str(font_file) if font_file else None,
             no_timestamp=no_timestamp,
             scrolling_text_file=str(scrolling_text) if scrolling_text else None,

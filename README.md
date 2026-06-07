@@ -10,7 +10,7 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 - Fetch map tiles from OpenStreetMap
 - Generate videos with customizable duration, resolution, and FPS
 - Show position marker on the map with customizable color and size
-- Display timestamp overlay with customizable color
+- Display text overlays (timestamp, title, captions, scrolling text, geolocation) with customizable color (`--text-color`, same R,G,B format as the marker)
 - Match GPX timeline to video duration
 - Add custom title text to videos
 - Include timed captions from CSV files
@@ -34,6 +34,7 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 - **gpxmapper.models** — Dataclasses such as **TextConfig** (use this module in programmatic examples, not `gpxmapper.cli`).
 - **gpxmapper.geolocation_clients** — Nominatim-style clients and **GeolocationClientFactory** (registry pattern
 analogous to map renderers).
+- **`nominatim/`** (at repository root, not the Python package) — **`start_server.sh`** and **`start_server.bat`** (Windows) bring up local **Docker** Nominatim on port **8080** (default **`PBF_URL`** Hungary); **`verify_local_hungary.sh`** for **`/status`** and sample reverse checks. All three are **copied into the Windows release ZIP** next to `gpxmapper.exe`, with **`install/doc/USER_GUIDE.md`** shipped as **`doc/USER_GUIDE.md`**. Details under **Nominatim server and `NOMINATIM_SERVER`** below.
 
 ### Map tile cache locations (default)
 
@@ -54,19 +55,39 @@ Instructions for **Cursor** (and pointers for Copilot / GitHub) are versioned un
 **AGENTS.md**, **.cursorrules**, and **.github/git-commit-instructions.md** only point here. Update the **.mdc**
 files when changing automation rules.
 
+## Documentation (MkDocs)
+
+With dev dependencies installed (`uv sync --all-packages` or equivalent), build the static site into **`docs/build/`**:
+
+```bash
+./scripts/build-docs.sh build
+```
+
+Windows (PowerShell):
+
+```powershell
+pwsh -File .\scripts\build-docs.ps1 build
+```
+
+Preview locally: `./scripts/build-docs.sh serve` or `pwsh -File .\scripts\build-docs.ps1 serve`.
+
+The wrappers set **`NO_MKDOCS_2_WARNING=1`** (Material for MkDocs — silences the MkDocs 2.0 banner) and **`DISABLE_MKDOCS_2_WARNING=true`** (pymdownx — silences the follow-up ProperDocs notice). **`pyproject.toml`** also pins **`mkdocs>=1.6,<2`** so dependency resolution does not upgrade into a future incompatible MkDocs major until the project explicitly changes that bound (after checking plugin support, or evaluating alternatives such as [ProperDocs](https://properdocs.org/) when they cover this plugin set).
+
 ## Installation
 
 ### Option 1: Windows Standalone Executable
 
 For Windows users who don't want to install Python or any dependencies:
 
-1. Download the latest `gpxmapper.exe` from the [releases page](https://github.com/dzooli/gpxmapper/releases)
-2. Place the executable in a directory of your choice
-3. Run the executable from the command line:
+1. Download the latest **release ZIP** from the [releases page](https://github.com/dzooli/gpxmapper/releases) (the archive contains `gpxmapper.exe`, readme, license, Nominatim helper scripts, and **`doc\USER_GUIDE.md`**).
+2. Unzip it into a folder of your choice (your **installation directory**).
+3. Open **Command Prompt** or **PowerShell**, `cd` into that folder, and run:
 
 ```cmd
 gpxmapper.exe generate path\to\your\file.gpx
 ```
+
+For a quick tour of the bundle layout and local Nominatim on Docker, read **`doc\USER_GUIDE.md`** inside the installation folder.
 
 ### Option 2: Install from source
 
@@ -123,6 +144,11 @@ This is the simplest method that handles all dependencies automatically:
   ```cmd
    .\dist\gpxmapper.exe --help
   ```
+7. **Optional — same ZIP as CI:** from the repo root, after `dist\gpxmapper.exe` exists, run PowerShell:
+  ```powershell
+  pwsh -File .\scripts\package-windows-release.ps1
+  ```
+  This recreates a **`release\`** staging folder and writes **`gpxmapper-release.zip`** (override with `-ZipPath` and `-StagingDirectory` if needed). Matches `.github/workflows/build.yml` contents.
 
 ## Usage
 
@@ -187,6 +213,7 @@ gpxmapper.exe info path\to\your\file.gpx
 - `--zoom`, `-z`: Zoom level for the map (1-19, higher is more detailed) (default: 15)
 - `--marker-size`, `-m`: Size of the position marker in pixels (default: 10)
 - `--marker-color`, `-c`: Color of the position marker as R,G,B (default: 255,0,0)
+- `--text-color`, `-tc`: R,G,B color for **all** text overlays—timestamp, title, captions, scrolling text, and geolocation labels (default: 0,0,0 black). Same comma-separated 0–255 format as `--marker-color`.
 - `--font-scale`, `-fs`: Font scale for all text (timestamp, title, captions) (default: 0.7)
 - `--title`: Optional text to display as a title on the video
 - `--text-align`, `-ta`: Alignment of all text (title, captions) (left, center, right) (default: left)
@@ -198,12 +225,13 @@ gpxmapper.exe info path\to\your\file.gpx
 - `--timezone`, `-tz`: Timezone to convert timestamps to. Must be a full timezone name (e.g., 'Europe/Budapest', 'US/Pacific'). If not specified, timestamps are not converted.
 - `--geolocate`: Enables reverse-geocoded location labels (Nominatim) instead of scrolling text. The on-screen line is a **short formatted** string from structured address fields (not the full raw `display_name`); see `docs/superpowers/plans/2026-06-07-geolocate-label-verbosity.md`. Conflicts with `--scrolling-text` / `--scrolling-speed`. See also `docs/superpowers/plans/2026-06-07-nominatim-geolocate-cli.md`. Successful lookups are cached in SQLite next to the tile cache directory (removed only by `clear-cache --geolocation`, not by plain `clear-cache`); see `docs/superpowers/plans/2026-06-07-reverse-geocode-sqlite-cache.md`.
 
-Note: The timestamp color is fixed to black (0,0,0) in the command-line interface but can be customized when using the library programmatically.
+In programmatic use, the same RGB tuple is the `timestamp_color` field on `TextConfig` (the name is historical; it applies to every overlay text type, not only the clock).
 
 ### Nominatim server and `NOMINATIM_SERVER`
 
 When **--geolocate** is used, GPXMapper talks to a Nominatim-compatible server:
 
+- **Local Nominatim (Docker)** — **From a repository clone:** run **`nominatim/start_server.sh`** (Linux, macOS, WSL) or **`nominatim/start_server.bat`** (Windows with Docker Desktop) from the repo; see comments in those files for `PBF_URL` defaults. **From the Windows release ZIP:** the same three files are unpacked next to **`gpxmapper.exe`**. See **`doc/USER_GUIDE.md`** in the ZIP for layout. After import, optional **`verify_local_hungary.sh`** (Git Bash / WSL) or **`gpxmapper.exe check-nominatim`** for **`/status`** checks.
 - **NOMINATIM_SERVER** — Base URL of the instance (no trailing slash required). If unset, the default is **`http://localhost:8080`** (typical local Docker setup). For a **public** instance without running your own server, set **`NOMINATIM_SERVER=https://nominatim.openstreetmap.org`** and follow [OpenStreetMap’s Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/) (rate limits, attribution). A local server is **faster** for bulk reverse geocoding; the public service is rate-limited in code when that host is detected.
 - **Health check** — Before downloading map tiles or prefetching addresses, the tool calls **`GET …/status`** up to **three times** (with short backoff between failures). If all attempts fail, it prints a **clear error** (URL, last error, hints to start local Nominatim or change `NOMINATIM_SERVER`) and asks whether to **continue without reverse geolocation** or **abort**. The safe default is **abort**; you must explicitly confirm to continue without geolocation. If **stdin is not a terminal** (e.g. CI or pipes), the tool **aborts** without prompting and explains that interactive confirmation is not available.
 
@@ -239,7 +267,7 @@ track_points = parser.parse()
 # Create a basic text configuration
 text_config = TextConfig(
     font_scale=0.7,
-    timestamp_color=(0, 0, 0)  # Black color for timestamp
+    timestamp_color=(0, 0, 0)  # RGB for all overlay text (timestamp, title, captions, etc.)
 )
 
 # Generate video
@@ -276,7 +304,7 @@ text_config = TextConfig(
     font_scale=1.0,
     title_text="My Hiking Adventure",
     text_align="center",
-    timestamp_color=(255, 255, 255),  # White color for timestamp
+    timestamp_color=(255, 255, 255),  # White for all overlay text
     font_file="path/to/custom_font.ttf",  # Custom TrueType font
     show_timestamp=True,  # Set to False to disable timestamp display
     scrolling_text_file="path/to/scrolling.txt",  # Text file with scrolling content
@@ -353,14 +381,16 @@ gpxmapper.exe generate my_run.gpx --marker-color 0,0,255 --marker-size 15
 For Python installation:
 
 ```bash
-gpxmapper generate my_run.gpx --font-scale 1.0 --text-align center
+gpxmapper generate my_run.gpx --font-scale 1.0 --text-align center --text-color 255,255,255
 ```
 
 For Windows executable:
 
 ```cmd
-gpxmapper.exe generate my_run.gpx --font-scale 1.0 --text-align center
+gpxmapper.exe generate my_run.gpx --font-scale 1.0 --text-align center --text-color 255,255,255
 ```
+
+Use `--text-color` whenever you need light text on a dark map (or any fixed RGB); invalid values produce the same style of error as `--marker-color`.
 
 ### Disable timestamp display
 

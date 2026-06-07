@@ -420,7 +420,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "commitizen", specifier = ">=4.7.0" },
-    { name = "mkdocs", specifier = ">=1.6.0" },
+    { name = "mkdocs", specifier = ">=1.6,<2" },
     { name = "mkdocs-click", specifier = "==0.9.0" },
     { name = "mkdocs-exclude", specifier = "==1.0.2" },
     { name = "mkdocs-gen-files", specifier = ">=0.5.0" },

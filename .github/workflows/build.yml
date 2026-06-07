@@ -27,11 +27,16 @@ jobs:
     - name: Create build zip
       run: |
         $releaseDir = "release"
-        New-Item -ItemType Directory -Path $releaseDir -Force
+        New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
+        New-Item -ItemType Directory -Path "$releaseDir\doc" -Force | Out-Null
         Copy-Item "dist\gpxmapper.exe" -Destination "$releaseDir\"
         Copy-Item "README.md" -Destination "$releaseDir\"
         Copy-Item "LICENSE" -Destination "$releaseDir\"
         Copy-Item "CHANGELOG.md" -Destination "$releaseDir\"
+        Copy-Item "nominatim\start_server.sh" -Destination "$releaseDir\"
+        Copy-Item "nominatim\verify_local_hungary.sh" -Destination "$releaseDir\"
+        Copy-Item "nominatim\start_server.bat" -Destination "$releaseDir\"
+        Copy-Item "install\doc\USER_GUIDE.md" -Destination "$releaseDir\doc\"
         $zipName = "gpxmapper-build.zip"
         Compress-Archive -Path "$releaseDir\*" -DestinationPath $zipName
         echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV

@@ -69,7 +69,8 @@ def create_text_config(
         font_scale: Font scale for all text (timestamp, title, captions)
         title_text: Optional text to display as a title on the video
         text_align: Alignment of all text (title, captions) (left, center, right)
-        timestamp_color: Color of the timestamp text as R,G,B (e.g., '0,0,0' for black)
+        timestamp_color: R,G,B for **all** text overlays (timestamp, title, captions,
+            scrolling, geolocation), each 0–255. Same as CLI ``--text-color``.
         font_file: Optional path to a TrueType font file (.ttf) for text rendering
         no_timestamp: Whether to disable timestamp visualization
         scrolling_text_file: Optional path to a text file containing content to be scrolled on the video
@@ -91,7 +92,9 @@ def create_text_config(
             timestamp_color_tuple = (tr, tg, tb)
         except Exception as e:
             logger.error(f"Invalid timestamp color format: {e}")
-            raise typer.BadParameter("Timestamp color must be in format 'R,G,B' with values 0-255")
+            raise typer.BadParameter(
+                "Text overlay color must be in format 'R,G,B' with values 0-255 for each channel"
+            )
 
     # Validate text alignment
     if text_align not in ["left", "center", "right"]:

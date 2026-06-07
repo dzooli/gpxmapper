@@ -126,7 +126,7 @@ def test_create_text_config_rejects_bad_alignment():
 
 
 def test_create_text_config_rejects_bad_timestamp_color():
-    with pytest.raises(typer.BadParameter, match="Timestamp color"):
+    with pytest.raises(typer.BadParameter, match="Text overlay color"):
         create_text_config(font_scale=1.0, timestamp_color="300,0,0")
 
 
@@ -225,6 +225,31 @@ def test_generate_aborts_on_bad_marker_color(
         ["generate", str(gpx_with_times), "--marker-color", "notrgb"],
     )
     assert result.exit_code != 0
+
+
+def test_generate_aborts_on_bad_text_color(
+        cli_runner: CliRunner, gpx_with_times: Path
+):
+    result = _invoke(
+        cli_runner,
+        ["generate", str(gpx_with_times), "--text-color", "notrgb"],
+    )
+    assert result.exit_code != 0
+
+
+def test_generate_passes_text_color_to_video_config(
+        cli_runner: CliRunner, gpx_with_times: Path, mocker
+):
+    mock_gen = mocker.patch(
+        "gpxmapper.cli.generate.generate_video", return_value=str(gpx_with_times.with_suffix(".mp4"))
+    )
+    result = _invoke(
+        cli_runner,
+        ["generate", str(gpx_with_times), "--text-color", "10, 20, 30"],
+    )
+    assert result.exit_code == 0
+    text_cfg = mock_gen.call_args.kwargs["text_config"]
+    assert text_cfg.timestamp_color == (10, 20, 30)
 
 
 def test_generate_geolocate_conflicts_with_scrolling_text(
