@@ -7,6 +7,8 @@ Stored next to the map tile cache directory (not inside it). Use
 Rows store the same string drawn on video (from
 :func:`~gpxmapper.geolocation_label_format.format_geolocation_overlay_label`), not
 necessarily the raw Nominatim ``display_name``.
+
+Developer reference for the database layout: ``docs/devdocs/reverse_geocode_cache_database.md``.
 """
 
 from __future__ import annotations
