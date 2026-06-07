@@ -2,7 +2,7 @@
 
 > **For agentic workers:** Implement task-by-task; steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Persist successful Nominatim reverse lookups in a **SQLite** database on disk so repeated runs (and nearby coordinates) avoid redundant HTTP calls. The database file lives **next to** the existing map tile cache directory (same app data layout as `MapRendererBase.resolve_default_cache_directory()`), not inside the tile folder (so `clear-cache` does not delete it accidentally).
+**Goal:** Persist successful Nominatim reverse lookups in a **SQLite** database on disk so repeated runs (and nearby coordinates) avoid redundant HTTP calls. The database file lives **next to** the existing map tile cache directory (same app data layout as `MapRendererBase.resolve_default_cache_directory()`), not inside the tile folder (so plain `clear-cache` does not delete it accidentally). Use **`gpxmapper clear-cache --geolocation`** when you want to remove the database.
 
 **Non-goals (v1):** Caching `GET /status`; sharing cache across machines; LRU eviction / max size (optional follow-up); caching geopy client path if it diverges from httpx (treat both as `base_url`-scoped rows if both hit same server).
 
@@ -53,7 +53,7 @@ Centralize this in one helper, e.g. `resolve_reverse_geocode_cache_path() -> Pat
 | Prefetch | `src/gpxmapper/geolocation_overlay.py` — consult + populate cache around `reverse_geocode` |
 | Docs / memory | `docs/solutions/2026-06-nominatim-geolocate.md` — short “SQLite cache” bullet + path rules; optional README note |
 | Tests | **New** `tests/test_reverse_geocode_cache.py` — path logic (monkeypatch `resolve_default_cache_directory`), get/put roundtrip with `tmp_path` DB file |
-| CLI (optional) | `clear-cache` or new flag — document in plan; implement only if quick: e.g. `clear-cache --include-geocode` or document manual delete path in v1 |
+| CLI | `clear-cache --geolocation` — deletes the SQLite file after `typer.confirm` (see `src/gpxmapper/cli/clear_cache.py`) |
 
 ---
 
@@ -85,11 +85,11 @@ Centralize this in one helper, e.g. `resolve_reverse_geocode_cache_path() -> Pat
 
 ### Task 5: Docs
 
-- [ ] Update solution doc + one sentence in user-facing docs about cache location and that `clear-cache` does not remove it.
+- [x] Update solution doc + user-facing docs about cache location; plain `clear-cache` does not remove the DB; **`clear-cache --geolocation`** does.
 
 ### Task 6 (optional): CLI
 
-- [ ] Extend `clear-cache` with `--geocode` to delete the SQLite file with confirm, or defer to a follow-up PR.
+- [x] Extend `clear-cache` with **`--geolocation`** to delete the SQLite file with confirm.
 
 ---
 
@@ -107,5 +107,5 @@ Centralize this in one helper, e.g. `resolve_reverse_geocode_cache_path() -> Pat
 |----------|----------|
 | Cache per Nominatim host? | Yes — `base_url` column (normalized string). |
 | Quantization | 5 decimal places; document. |
-| Inside tile directory? | **No** — sibling file to avoid `clear-cache` wiping DB. |
+| Inside tile directory? | **No** — sibling file so plain `clear-cache` does not wipe the DB; use **`clear-cache --geolocation`** to remove it. |
 | Fail if DB corrupt? | Fall back to HTTP + warn. |

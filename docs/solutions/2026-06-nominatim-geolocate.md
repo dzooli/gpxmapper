@@ -14,7 +14,7 @@ Full task list and decisions: [`docs/superpowers/plans/2026-06-07-nominatim-geol
 - **`--geolocate`**: conflicts with `--scrolling-text` / `--scrolling-speed`.
 - **`/status`**: up to **3** HTTP attempts; on total failure → stderr error + **`typer.confirm`** (default abort) to continue **without** geolocation; no TTY → abort.
 - **Prefetch**: main thread only, before `ThreadPoolExecutor`; **10 m** anchor + **`GPXTrackPoint.distance_to`**; public host → **`asyncio.sleep(1.1)`** after each reverse HTTP.
-- **SQLite cache**: Successful reverse lookups are stored under the same app-data parent as map tiles (not inside the tile folder); see [`docs/superpowers/plans/2026-06-07-reverse-geocode-sqlite-cache.md`](../superpowers/plans/2026-06-07-reverse-geocode-sqlite-cache.md). `clear-cache` does **not** delete this database.
+- **SQLite cache**: Successful reverse lookups are stored under the same app-data parent as map tiles (not inside the tile folder); see [`docs/superpowers/plans/2026-06-07-reverse-geocode-sqlite-cache.md`](../superpowers/plans/2026-06-07-reverse-geocode-sqlite-cache.md). Plain `clear-cache` does not delete this database; use **`clear-cache --geolocation`** to remove it.
 - **Overlay**: static address line, same vertical band as scrolling text, `text_align` for X.
 
 ## Key files (when implemented)

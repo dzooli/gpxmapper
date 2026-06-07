@@ -1,7 +1,8 @@
 """SQLite cache for Nominatim reverse-geocode ``display_name`` results.
 
-Stored next to the map tile cache directory (not inside it) so ``clear-cache`` does
-not remove this file. See :func:`resolve_reverse_geocode_cache_path`.
+Stored next to the map tile cache directory (not inside it). Use
+``gpxmapper clear-cache --geolocation`` to remove this file. See
+:func:`resolve_reverse_geocode_cache_path`.
 """
 
 from __future__ import annotations

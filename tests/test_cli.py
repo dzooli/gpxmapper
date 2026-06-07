@@ -314,3 +314,52 @@ def test_clear_cache_deletes_files_when_confirmed(
     assert result.exit_code == 0
     assert "Successfully cleared" in result.stdout
     assert not stale.exists()
+
+
+def test_clear_geolocation_cache_when_file_missing(cli_runner: CliRunner, tmp_path: Path, mocker):
+    missing = tmp_path / "no_db.sqlite"
+    mocker.patch(
+        "gpxmapper.cli.clear_cache.resolve_reverse_geocode_cache_path",
+        return_value=missing,
+    )
+
+    result = _invoke(cli_runner, ["clear-cache", "--geolocation"])
+
+    assert result.exit_code == 0
+    assert "does not exist" in result.stdout
+
+
+def test_clear_geolocation_cache_cancelled_when_not_confirmed(
+        cli_runner: CliRunner, tmp_path: Path, mocker
+):
+    db = tmp_path / "reverse_geocode.sqlite"
+    db.write_bytes(b"x")
+    mocker.patch(
+        "gpxmapper.cli.clear_cache.resolve_reverse_geocode_cache_path",
+        return_value=db,
+    )
+    mocker.patch("gpxmapper.cli.clear_cache.typer.confirm", return_value=False)
+
+    result = _invoke(cli_runner, ["clear-cache", "--geolocation"])
+
+    assert result.exit_code == 0
+    assert "cancelled" in result.stdout
+    assert db.is_file()
+
+
+def test_clear_geolocation_cache_deletes_file_when_confirmed(
+        cli_runner: CliRunner, tmp_path: Path, mocker
+):
+    db = tmp_path / "reverse_geocode.sqlite"
+    db.write_bytes(b"x")
+    mocker.patch(
+        "gpxmapper.cli.clear_cache.resolve_reverse_geocode_cache_path",
+        return_value=db,
+    )
+    mocker.patch("gpxmapper.cli.clear_cache.typer.confirm", return_value=True)
+
+    result = _invoke(cli_runner, ["clear-cache", "--geolocation"])
+
+    assert result.exit_code == 0
+    assert "Successfully deleted reverse geocode cache" in result.stdout
+    assert not db.exists()

@@ -194,7 +194,7 @@ gpxmapper.exe info path\to\your\file.gpx
 - `--scrolling-text`, `-st`: Path to a text file containing content to be scrolled on the video
 - `--scrolling-speed`, `-ss`: Speed at which the text scrolls across the video (pixels per frame). If not specified, speed will be calculated based on video duration.
 - `--timezone`, `-tz`: Timezone to convert timestamps to. Must be a full timezone name (e.g., 'Europe/Budapest', 'US/Pacific'). If not specified, timestamps are not converted.
-- `--geolocate`: Enables reverse-geocoded address labels (Nominatim) instead of scrolling text. Conflicts with `--scrolling-text` / `--scrolling-speed`. See `docs/superpowers/plans/2026-06-07-nominatim-geolocate-cli.md`. Successful lookups are cached in SQLite next to the tile cache directory (not removed by `clear-cache`); see `docs/superpowers/plans/2026-06-07-reverse-geocode-sqlite-cache.md`.
+- `--geolocate`: Enables reverse-geocoded address labels (Nominatim) instead of scrolling text. Conflicts with `--scrolling-text` / `--scrolling-speed`. See `docs/superpowers/plans/2026-06-07-nominatim-geolocate-cli.md`. Successful lookups are cached in SQLite next to the tile cache directory (removed only by `clear-cache --geolocation`, not by plain `clear-cache`); see `docs/superpowers/plans/2026-06-07-reverse-geocode-sqlite-cache.md`.
 
 Note: The timestamp color is fixed to black (0,0,0) in the command-line interface but can be customized when using the library programmatically.
 
@@ -211,9 +211,12 @@ When **`--geolocate`** is used, GPXMapper talks to a Nominatim-compatible server
 
 ### `clear-cache` command
 
-Clears the map tiles cache directory to free up disk space. The path is the same default used by map renderers (
+By default, clears the map tiles cache directory to free up disk space. The path is the same default used by map renderers (
 `MapRendererBase.resolve_default_cache_directory()`), so it stays consistent regardless of sync vs async tile fetching.
-The reverse-geocode SQLite cache lives **next to** that directory and is **not** deleted by this command.
+
+- **`--geolocation`** — Instead of tiles, deletes the reverse-geocode SQLite file (same path as `generate --geolocate` uses). You are prompted before removal.
+
+The reverse-geocode SQLite cache lives **next to** the tile directory; plain `clear-cache` does **not** remove it.
 
 ## Programmatic Usage
 
@@ -462,6 +465,12 @@ gpxmapper clear-cache
 For Windows executable:
 ```cmd
 gpxmapper.exe clear-cache
+```
+
+To remove only the Nominatim address cache database:
+
+```bash
+gpxmapper clear-cache --geolocation
 ```
 
 ## Troubleshooting

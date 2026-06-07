@@ -16,7 +16,7 @@ Planned CLI behavior (see the implementation plan under `docs/superpowers/plans/
 
 - **`NOMINATIM_SERVER`** — Base URL for Nominatim. Default when unset: **`http://localhost:8080`**. Public option: **`https://nominatim.openstreetmap.org`** (respect [OSM usage policy](https://operations.osmfoundation.org/policies/nominatim/)); local instances are preferred for performance.
 - **`gpxmapper generate … --geolocate`** — Before heavy work, the tool checks **`/status`** up to **three times**. If the server is still unreachable, it shows a **clear error** and asks to **continue without reverse geolocation** or **abort** (default: abort). Non-interactive runs (no TTY) **abort** without prompting.
-- **Reverse-geocode cache** — Successful lookups are written to a small **SQLite** file next to the map tile cache directory (not inside it), keyed by Nominatim base URL and rounded coordinates. Re-running `generate --geolocate` reuses cached labels and skips HTTP for those cells. **`gpxmapper clear-cache`** only removes map tiles, not this database.
+- **Reverse-geocode cache** — Successful lookups are written to a small **SQLite** file next to the map tile cache directory (not inside it), keyed by Nominatim base URL and rounded coordinates. Re-running `generate --geolocate` reuses cached labels and skips HTTP for those cells. **`gpxmapper clear-cache`** removes map tiles only; use **`gpxmapper clear-cache --geolocation`** to delete this database (with confirmation).
 
 ## Usage
 
