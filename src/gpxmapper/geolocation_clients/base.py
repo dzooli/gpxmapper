@@ -170,6 +170,8 @@ class HttpxClientMixin(RobustExternalCalls):
         async def _do() -> httpx.Response:
             resp = await client.request(method, url, headers=merged_headers, **kwargs)
             resp.raise_for_status()
+            if self.logger:
+                self.logger.debug("HTTP %s %s -> %s", method, url, resp.status_code)
             return resp
 
         return await self.retry(_do)

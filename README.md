@@ -134,6 +134,10 @@ This is the simplest method that handles all dependencies automatically:
 
 ## Usage
 
+### Logging
+
+Global option (before any subcommand): **`--log-level`** — `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL` (default **`INFO`**). You can also set **`GPXMAPPER_LOG_LEVEL`**. At **`INFO`**, per-tile cache lines and Nominatim HTTP request lines are hidden; use **`--log-level DEBUG`** to see them. Third-party **`httpx`** / **`urllib3`** loggers stay at **WARNING** unless the root level is **DEBUG**.
+
 ### Generate a video from a GPX file
 
 For Python installation:

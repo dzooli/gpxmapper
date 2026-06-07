@@ -12,10 +12,13 @@ Reverse geocode requests must send a identifying ``User-Agent`` (see OSM policy)
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from urllib.parse import urlparse
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_NOMINATIM_SERVER = "http://localhost:8080"
 """Default when ``NOMINATIM_SERVER`` is not set (local Nominatim)."""
@@ -61,9 +64,22 @@ async def probe_nominatim_status(
             async with httpx.AsyncClient(timeout=timeout) as client:
                 response = await client.get(url, headers={"User-Agent": user_agent})
                 response.raise_for_status()
+            logger.debug(
+                "Nominatim status probe OK (attempt %s/%s): GET %s -> %s",
+                attempt + 1,
+                STATUS_PROBE_ATTEMPTS,
+                url,
+                response.status_code,
+            )
             return True, None
         except Exception as exc:  # noqa: BLE001 — aggregate failures for operator message
             last_err = str(exc)
+            logger.debug(
+                "Nominatim status probe attempt %s/%s failed: %s",
+                attempt + 1,
+                STATUS_PROBE_ATTEMPTS,
+                last_err,
+            )
             if attempt < STATUS_PROBE_ATTEMPTS - 1:
                 await asyncio.sleep(STATUS_BACKOFF_BASE_SEC * (2**attempt))
     return False, last_err

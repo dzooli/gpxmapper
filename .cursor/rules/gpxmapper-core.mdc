@@ -29,7 +29,7 @@ Run: `uv run pytest` (coverage roots: `src/gpxmapper` per `pytest.ini`).
 
 | Area | Notes |
 |------|--------|
-| `cli/` | Typer app: `generate`, `info`, `clear-cache` |
+| `cli/` | Typer app: `generate`, `info`, `clear-cache`, `check-nominatim`; global **`--log-level`** (default INFO) via `cli/log_level.py` |
 | `gpx_parser.py` | GPX → track points |
 | `map_renderer/` | `MapRendererBase` (ABC, cache path + geometry + rendering). `MapRenderer` (sync, `requests` + threads). `MapRendererAsync` (`httpx`). `MapRendererFactory`: `register_renderer` / `create_renderer`; kinds `sync` \| `async` registered from `map_renderer/__init__.py`. Default cache: `MapRendererBase.resolve_default_cache_directory()` / `resolve_cache_directory()` |
 | `video_generator.py` | Frames, OpenCV writer; uses `MapRendererFactory.create(MapRendererKind.ASYNC)` for tiles |

@@ -259,7 +259,7 @@ class MapRendererBase(ABC):
     def cache_image(self, x: int, y: int, zoom: int, image: Image.Image) -> None:
         """Cache the given tile image if caching is enabled."""
         if self.use_cache and self.cache_dir:
-            logger.info(f"Caching tile {x},{y} at zoom {zoom}")
+            logger.debug("Caching tile %s,%s at zoom %s (after fetch)", x, y, zoom)
             tile_path = os.path.join(self.cache_dir, f"{zoom}_{x}_{y}.png")
             image.save(tile_path)
 

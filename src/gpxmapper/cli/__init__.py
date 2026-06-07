@@ -21,6 +21,27 @@ app = typer.Typer(
     help="GPX to video mapper - creates videos from GPX tracks",
 )
 
+
+@app.callback()
+def _cli_root(
+    log_level: str = typer.Option(
+        "INFO",
+        "--log-level",
+        envvar="GPXMAPPER_LOG_LEVEL",
+        help="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL). "
+        "Per-request HTTP and tile-cache detail uses DEBUG.",
+        show_default=True,
+    ),
+) -> None:
+    """Shared CLI options (run before any subcommand)."""
+    from .log_level import apply_cli_log_level
+
+    try:
+        apply_cli_log_level(log_level)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+
 # Import commands (side-effect: register subcommands on ``app``)
 from . import check_nominatim  # noqa: E402, F401
 from . import clear_cache  # noqa: E402, F401

@@ -20,7 +20,7 @@ Planned CLI behavior (see the implementation plan under `docs/superpowers/plans/
 
 ## Usage
 
-- See the CLI help: `gpxmapper --help`.
+- See the CLI help: `gpxmapper --help` (includes global **`--log-level`** / **`GPXMAPPER_LOG_LEVEL`** — default **INFO**; use **DEBUG** for per-request HTTP and tile-cache detail).
 - For generated API reference, use the [Reference](reference/gpxmapper/cli) section.
 
 ## Contributing

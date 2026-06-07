@@ -166,6 +166,21 @@ def test_app_help_lists_commands(cli_runner: CliRunner):
     assert "info" in result.stdout
     assert "clear-cache" in result.stdout
     assert "check-nominatim" in result.stdout
+    assert "--log-level" in result.stdout
+
+
+def test_invalid_log_level(cli_runner: CliRunner, gpx_with_times: Path):
+    result = _invoke(cli_runner, ["--log-level", "NOT_A_LEVEL", "info", str(gpx_with_times)])
+    assert result.exit_code != 0
+    assert result.exception is not None
+    assert "Invalid --log-level" in str(result.exception)
+
+
+def test_apply_cli_log_level_rejects_unknown_name():
+    from gpxmapper.cli.log_level import apply_cli_log_level
+
+    with pytest.raises(ValueError, match="Invalid --log-level"):
+        apply_cli_log_level("NOT_A_LEVEL")
 
 
 def test_info_success(cli_runner: CliRunner, gpx_with_times: Path):
