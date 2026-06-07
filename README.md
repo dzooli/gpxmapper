@@ -1,6 +1,6 @@
 # GPX Mapper application
 
-[![Build and Release](https://github.com/dzooli/gpxmapper/actions/workflows/release.yml/badge.svg)](https://github.com/dzooli/gpxmapper/actions/workflows/release.yml) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dzooli_gpxmapper&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=dzooli_gpxmapper)
+[Build and Release](https://github.com/dzooli/gpxmapper/actions/workflows/release.yml) [Quality Gate Status](https://sonarcloud.io/summary/new_code?id=dzooli_gpxmapper)
 
 A command-line tool that generates videos from GPX tracks, showing the route on a map with a marker indicating the current position.
 
@@ -28,15 +28,12 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 
 ## Library layout
 
-- **`gpxmapper.map_renderer`** — `MapRendererBase` (shared geometry, cache path, rendering helpers), `MapRenderer` (
-  sync), `MapRendererAsync` (async), and **`MapRendererFactory`** (`register_renderer` / `create_renderer`, kinds
-  `sync` | `async`). Video generation uses the **async** renderer by default.
+- **gpxmapper.map_renderer** — `MapRendererBase` (shared geometry, cache path, rendering helpers), `MapRenderer` (sync), `MapRendererAsync` (async), and **MapRendererFactory** (`register_renderer` / `create_renderer`, kinds `sync` | `async`). Video generation uses the **async** renderer by default.
 - **Default tile cache path** — Implemented once on `MapRendererBase.resolve_default_cache_directory()`; CLI
-  `clear-cache` uses the same helper so the path always matches renderers.
-- **`gpxmapper.models`** — Dataclasses such as **`TextConfig`** (use this module in programmatic examples, not
-  `gpxmapper.cli`).
-- **`gpxmapper.geolocation_clients`** — Nominatim-style clients and **`GeolocationClientFactory`** (registry pattern
-  analogous to map renderers).
+`clear-cache` uses the same helper so the path always matches renderers.
+- **gpxmapper.models** — Dataclasses such as **TextConfig** (use this module in programmatic examples, not `gpxmapper.cli`).
+- **gpxmapper.geolocation_clients** — Nominatim-style clients and **GeolocationClientFactory** (registry pattern
+analogous to map renderers).
 
 ### Map tile cache locations (default)
 
@@ -50,11 +47,11 @@ When `cache_dir` is not overridden, tiles are stored under:
 
 Instructions for **Cursor** (and pointers for Copilot / GitHub) are versioned under **`.cursor/rules/`**:
 
-- **`gpxmapper-core.mdc`** — always applied: tooling, architecture, workflow
-- **`python-standards.mdc`** — when editing Python source (`*.py`)
-- **`git-github-workflow.mdc`** — always applied: conventional commits, branches, PRs
+- **gpxmapper-core.mdc** — always applied: tooling, architecture, workflow
+- **python-standards.mdc** — when editing Python source (`*.py`)
+- **git-github-workflow.mdc** — always applied: conventional commits, branches, PRs
 
-**`AGENTS.md`**, **`.cursorrules`**, and **`.github/git-commit-instructions.md`** only point here. Update the **`.mdc`**
+**AGENTS.md**, **.cursorrules**, and **.github/git-commit-instructions.md** only point here. Update the **.mdc**
 files when changing automation rules.
 
 ## Installation
@@ -96,13 +93,12 @@ If you want to build the executable yourself, there are several methods availabl
 This is the simplest method that handles all dependencies automatically:
 
 1. Clone the repository and navigate to the project directory:
-   ```cmd
+  ```cmd
    git clone https://github.com/zoltan-dzooli-fabian/gpxmapper.git
    cd gpxmapper
-   ```
-
+  ```
 2. Make sure you have either `pip` or `uv` installed for package management:
-   ```cmd
+  ```cmd
    # Check if pip is installed
    python -m pip --version
 
@@ -111,41 +107,39 @@ This is the simplest method that handles all dependencies automatically:
 
    # Install uv if needed
    python -m pip install uv
-   ```
-
+  ```
 3. Run the build script:
-   ```cmd
+  ```cmd
    python build_exe.py
-   ```
-
+  ```
 4. The script will automatically:
-   - Install PyInstaller if not already installed
-   - Read configuration from pyproject.toml
-   - Create a spec file
-   - Build the executable
-   - Clean up temporary files
-
+  - Install PyInstaller if not already installed
+  - Read configuration from pyproject.toml
+  - Create a spec file
+  - Build the executable
+  - Clean up temporary files
 5. The executable will be created in the `dist` directory as `gpxmapper.exe`
-
 6. You can test the executable by running:
-   ```cmd
+  ```cmd
    .\dist\gpxmapper.exe --help
-   ```
+  ```
 
 ## Usage
 
 ### Logging
 
-Global option (before any subcommand): **`--log-level`** — `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL` (default **`INFO`**). You can also set **`GPXMAPPER_LOG_LEVEL`**. At **`INFO`**, per-tile cache lines and Nominatim HTTP request lines are hidden; use **`--log-level DEBUG`** to see them. Third-party **`httpx`** / **`urllib3`** loggers stay at **WARNING** unless the root level is **DEBUG**.
+Global option (before any subcommand): **--log-level** — `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL` (default **INFO**). You can also set **GPXMAPPER_LOG_LEVEL**. At **INFO**, per-tile cache lines and Nominatim HTTP request lines are hidden; use **--log-level DEBUG** to see them. Third-party **httpx** / **urllib3** loggers stay at **WARNING** unless the root level is **DEBUG**.
 
 ### Generate a video from a GPX file
 
 For Python installation:
+
 ```bash
 gpxmapper generate path/to/your/file.gpx
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe generate path\to\your\file.gpx
 ```
@@ -155,11 +149,13 @@ This will create a video file with the same name as the GPX file but with a `.mp
 ### Customize the video
 
 For Python installation:
+
 ```bash
 gpxmapper generate path/to/your/file.gpx --output output.mp4 --duration 120 --fps 30 --width 1920 --height 1080 --zoom 14
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe generate path\to\your\file.gpx --output output.mp4 --duration 120 --fps 30 --width 1920 --height 1080 --zoom 14
 ```
@@ -167,11 +163,13 @@ gpxmapper.exe generate path\to\your\file.gpx --output output.mp4 --duration 120 
 ### Get information about a GPX file
 
 For Python installation:
+
 ```bash
 gpxmapper info path/to/your/file.gpx
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe info path\to\your\file.gpx
 ```
@@ -204,9 +202,9 @@ Note: The timestamp color is fixed to black (0,0,0) in the command-line interfac
 
 ### Nominatim server and `NOMINATIM_SERVER`
 
-When **`--geolocate`** is used, GPXMapper talks to a Nominatim-compatible server:
+When **--geolocate** is used, GPXMapper talks to a Nominatim-compatible server:
 
-- **`NOMINATIM_SERVER`** — Base URL of the instance (no trailing slash required). If unset, the default is **`http://localhost:8080`** (typical local Docker setup). For a **public** instance without running your own server, set **`NOMINATIM_SERVER=https://nominatim.openstreetmap.org`** and follow [OpenStreetMap’s Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/) (rate limits, attribution). A local server is **faster** for bulk reverse geocoding; the public service is rate-limited in code when that host is detected.
+- **NOMINATIM_SERVER** — Base URL of the instance (no trailing slash required). If unset, the default is **`http://localhost:8080`** (typical local Docker setup). For a **public** instance without running your own server, set **`NOMINATIM_SERVER=https://nominatim.openstreetmap.org`** and follow [OpenStreetMap’s Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/) (rate limits, attribution). A local server is **faster** for bulk reverse geocoding; the public service is rate-limited in code when that host is detected.
 - **Health check** — Before downloading map tiles or prefetching addresses, the tool calls **`GET …/status`** up to **three times** (with short backoff between failures). If all attempts fail, it prints a **clear error** (URL, last error, hints to start local Nominatim or change `NOMINATIM_SERVER`) and asks whether to **continue without reverse geolocation** or **abort**. The safe default is **abort**; you must explicitly confirm to continue without geolocation. If **stdin is not a terminal** (e.g. CI or pipes), the tool **aborts** without prompting and explains that interactive confirmation is not available.
 
 ### `info` command
@@ -218,7 +216,7 @@ When **`--geolocate`** is used, GPXMapper talks to a Nominatim-compatible server
 By default, clears the map tiles cache directory to free up disk space. The path is the same default used by map renderers (
 `MapRendererBase.resolve_default_cache_directory()`), so it stays consistent regardless of sync vs async tile fetching.
 
-- **`--geolocation`** — Instead of tiles, deletes the reverse-geocode SQLite file (same path as `generate --geolocate` uses). You are prompted before removal.
+- **--geolocation** — Instead of tiles, deletes the reverse-geocode SQLite file (same path as `generate --geolocate` uses). You are prompted before removal.
 
 The reverse-geocode SQLite cache lives **next to** the tile directory; plain `clear-cache` does **not** remove it.
 
@@ -309,24 +307,29 @@ print(f"Video generated successfully: {output_path}")
 ### Basic usage
 
 For Python installation:
+
 ```bash
 gpxmapper generate my_bike_ride.gpx
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe generate my_bike_ride.gpx
 ```
+
 Note: Use backslashes for paths on Windows (e.g., `C:\path\to\file.gpx`)
 
 ### Create a 2-minute video with higher resolution
 
 For Python installation:
+
 ```bash
 gpxmapper generate my_hike.gpx --duration 120 --width 1920 --height 1080
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe generate my_hike.gpx --duration 120 --width 1920 --height 1080
 ```
@@ -334,11 +337,13 @@ gpxmapper.exe generate my_hike.gpx --duration 120 --width 1920 --height 1080
 ### Use a different marker color and size
 
 For Python installation:
+
 ```bash
 gpxmapper generate my_run.gpx --marker-color 0,0,255 --marker-size 15
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe generate my_run.gpx --marker-color 0,0,255 --marker-size 15
 ```
@@ -346,11 +351,13 @@ gpxmapper.exe generate my_run.gpx --marker-color 0,0,255 --marker-size 15
 ### Customize the text appearance
 
 For Python installation:
+
 ```bash
 gpxmapper generate my_run.gpx --font-scale 1.0 --text-align center
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe generate my_run.gpx --font-scale 1.0 --text-align center
 ```
@@ -358,11 +365,13 @@ gpxmapper.exe generate my_run.gpx --font-scale 1.0 --text-align center
 ### Disable timestamp display
 
 For Python installation:
+
 ```bash
 gpxmapper generate my_run.gpx --no-timestamp
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe generate my_run.gpx --no-timestamp
 ```
@@ -370,11 +379,13 @@ gpxmapper.exe generate my_run.gpx --no-timestamp
 ### Add a title to the video
 
 For Python installation:
+
 ```bash
 gpxmapper generate my_run.gpx --title "My Morning Run" --text-align center
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe generate my_run.gpx --title "My Morning Run" --text-align center
 ```
@@ -382,11 +393,13 @@ gpxmapper.exe generate my_run.gpx --title "My Morning Run" --text-align center
 ### Use a custom font for text rendering
 
 For Python installation:
+
 ```bash
 gpxmapper generate my_run.gpx --font path/to/custom_font.ttf
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe generate my_run.gpx --font path\to\custom_font.ttf
 ```
@@ -394,6 +407,7 @@ gpxmapper.exe generate my_run.gpx --font path\to\custom_font.ttf
 ### Add captions to the video
 
 First, create a CSV file with your captions (e.g., `captions.csv`):
+
 ```
 TIME,CAPTION
 00:00:01,Starting the journey
@@ -404,11 +418,13 @@ TIME,CAPTION
 Then, use the `--captions` option:
 
 For Python installation:
+
 ```bash
 gpxmapper generate my_run.gpx --captions captions.csv
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe generate my_run.gpx --captions captions.csv
 ```
@@ -416,6 +432,7 @@ gpxmapper.exe generate my_run.gpx --captions captions.csv
 ### Add scrolling text to the video
 
 First, create a text file with your scrolling content (e.g., `scrolling.txt`):
+
 ```
 This is a scrolling text that will appear at the bottom of the video.
 ```
@@ -423,11 +440,13 @@ This is a scrolling text that will appear at the bottom of the video.
 Then, use the `--scrolling-text` option:
 
 For Python installation:
+
 ```bash
 gpxmapper generate my_run.gpx --scrolling-text scrolling.txt
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe generate my_run.gpx --scrolling-text scrolling.txt
 ```
@@ -435,11 +454,13 @@ gpxmapper.exe generate my_run.gpx --scrolling-text scrolling.txt
 You can also specify the scrolling speed:
 
 For Python installation:
+
 ```bash
 gpxmapper generate my_run.gpx --scrolling-text scrolling.txt --scrolling-speed 2.5
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe generate my_run.gpx --scrolling-text scrolling.txt --scrolling-speed 2.5
 ```
@@ -447,26 +468,29 @@ gpxmapper.exe generate my_run.gpx --scrolling-text scrolling.txt --scrolling-spe
 ### Convert timestamps to a specific timezone
 
 For Python installation:
+
 ```bash
 gpxmapper generate my_run.gpx --timezone Europe/London
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe generate my_run.gpx --timezone Europe/London
 ```
-
 
 ### Clear the map tiles cache
 
 To free up disk space by removing cached map tiles:
 
 For Python installation:
+
 ```bash
 gpxmapper clear-cache
 ```
 
 For Windows executable:
+
 ```cmd
 gpxmapper.exe clear-cache
 ```
@@ -489,7 +513,7 @@ warning: Failed to uninstall package at .venv\Lib\site-packages\numpy-<version>.
 
 This means a previous wheel left a corrupted metadata directory, so uv cannot cleanly uninstall it. You can fix it safely in two ways on Windows:
 
-1) Quick repair (remove only corrupted .dist-info):
+1. Quick repair (remove only corrupted .dist-info):
 
 - Close any running Python processes
 - From the project root, run:
@@ -500,7 +524,7 @@ This means a previous wheel left a corrupted metadata directory, so uv cannot cl
 uv sync --reinstall
 ```
 
-2) Full reset of the virtual environment:
+2. Full reset of the virtual environment:
 
 ```powershell
 # Remove the entire venv and recreate it
@@ -510,6 +534,7 @@ uv sync
 ```
 
 Notes:
+
 - The project targets Python 3.12+ and locks dependencies via uv.lock. NumPy is specified as ">=1.24.0" and will typically resolve to 2.x on Python 3.12.
 - If you keep hitting this warning, prefer the full reset which guarantees a clean state.
 
@@ -541,4 +566,5 @@ uv sync
 
 ## License
 
-MIT
+[See LICENSE](./LICENSE)
+
