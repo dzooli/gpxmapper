@@ -71,6 +71,6 @@ End-user and troubleshooting detail: **README.md**, **docs/**.
 ## Other Cursor rules in this repo
 
 - **`python-standards.mdc`** — Python (`**/*.py`)
-- **`git-github-workflow.mdc`** — commits, branches, PRs (GitHub). Commit **subject** must start with `[KEY-n]` (enforced by `scripts/check_commit_message.py` via pre-commit `commit-msg`).
+- **`git-github-workflow.mdc`** — commits, branches, PRs (GitHub). Commit **subject** is conventional `type(scope):` only; **body** after a blank line starts with `[KEY-n]: title` (enforced by `scripts/check_commit_message.py` on pre-commit `commit-msg`) so Commitizen changelog parsing still works.
 
 Together with this file, they form the **canonical Cursor rule set** for automation.
