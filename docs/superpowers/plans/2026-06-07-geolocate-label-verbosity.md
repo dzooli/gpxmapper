@@ -8,7 +8,7 @@ Nominatim’s full `display_name` is often too long for a single-line map overla
 
 ## Decision (product)
 
-- **Overlay string** is a **short, traveler-oriented line** built from structured `address` fields when available, with safe fallbacks to trimmed `display_name`.
+- **Overlay string** is a **short, traveler-oriented line** built from structured `address` fields when available, with safe fallbacks to trimmed `display_name`. When both exist, **street/POI + neighbourhood/suburb (if any) + village/town/city (or next available settlement field)** are combined so the settlement is visible by default, not only the finest-grained place key.
 - **Internationalization (baseline):** Tolerate **missing `city`** and other gaps; pick the **most helpful** known fields for locating the traveler (village, town, suburb, road, region, etc.). No locale-specific typography in this phase.
 - **Cache:** Still one string per quantized cell; stored value is the **formatted overlay text** (not necessarily raw Nominatim `display_name`). Existing rows stay as-is until re-fetch or `gpxmapper clear-cache --geolocation`.
 
@@ -16,7 +16,7 @@ Nominatim’s full `display_name` is often too long for a single-line map overla
 
 | Item | Notes |
 |------|--------|
-| `format_geolocation_overlay_label()` | `src/gpxmapper/geolocation_label_format.py` — pure function, unit-tested |
+| `format_geolocation_overlay_label()` | `src/gpxmapper/geolocation_label_format.py` — street/POI, optional local area (neighbourhood/suburb), then settlement (village/town/city/…); unit-tested |
 | Prefetch wiring | `geolocation_overlay._reverse_label_from_cache_or_http` formats after HTTP, before `put_sync` |
 | Truncation | Hard cap on overlay length to respect single-line rendering |
 

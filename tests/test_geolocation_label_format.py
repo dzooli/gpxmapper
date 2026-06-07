@@ -36,6 +36,21 @@ def test_street_and_city_no_duplicate_when_names_differ() -> None:
     assert "France" not in out
 
 
+def test_street_neighbourhood_and_city_all_shown() -> None:
+    r = _resp(
+        display_name="x",
+        address={
+            "road": "Main St",
+            "neighbourhood": "Mitte",
+            "city": "Berlin",
+        },
+    )
+    out = format_geolocation_overlay_label(r)
+    assert "Main St" in out
+    assert "Mitte" in out
+    assert "Berlin" in out
+
+
 def test_tolerates_missing_city_uses_village_and_state() -> None:
     r = _resp(
         display_name="Haus, 12345, Bayern, Deutschland",

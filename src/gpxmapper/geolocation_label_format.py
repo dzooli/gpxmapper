@@ -21,11 +21,16 @@ _STREET_LINE_KEYS = (
     "track",
 )
 
-# Settled / admin labels — order is most local first; **city is optional** (often absent).
-_PLACE_KEYS = (
+# Finer-grained area (optional first); settlement is appended by default when present.
+_LOCAL_PLACE_KEYS = (
     "neighbourhood",
     "suburb",
     "quarter",
+)
+
+# City / town / village / … — appended when available so the traveler sees “where”
+# even if a street or neighbourhood was already added.
+_SETTLEMENT_KEYS = (
     "village",
     "hamlet",
     "town",
@@ -114,9 +119,20 @@ def _fallback_from_display_name(display_name: str, max_len: int) -> str:
     return _truncate(display_name.strip(), max_len)
 
 
+def _append_unique_segment(segments: list[str], part: str) -> None:
+    """Append ``part`` if non-empty and not already equal to an existing segment (case-insensitive)."""
+    p = _clean(part)
+    if not p:
+        return
+    low = p.lower()
+    if any(s.lower() == low for s in segments):
+        return
+    segments.append(p)
+
+
 def _append_region_for_disambiguation(
     segments: list[str],
-    place: str,
+    place_label: str,
     data: Mapping[str, Any],
 ) -> None:
     """Append state/region when the line would otherwise be too vague."""
@@ -125,11 +141,15 @@ def _append_region_for_disambiguation(
     region = _first_field(data, _REGION_KEYS)
     if not region:
         return
-    if not place:
+    if not place_label:
         if all(region.lower() not in s.lower() for s in segments):
             segments.append(region)
         return
-    if len(segments) == 1 and place == segments[0] and region.lower() != place.lower():
+    if (
+        len(segments) == 1
+        and place_label == segments[0]
+        and region.lower() != place_label.lower()
+    ):
         segments.append(region)
 
 
@@ -141,8 +161,10 @@ def format_geolocation_overlay_label(
     """Return a short line for map overlay from a reverse-geocode response.
 
     Uses structured ``address`` fields when present (tolerates missing ``city`` and
-    other gaps). Falls back to the first segments of ``display_name``, then
-    truncation. See ``docs/superpowers/plans/2026-06-07-geolocate-label-verbosity.md``.
+    other gaps). After street or POI text, appends neighbourhood/suburb (if any) and
+    then village/town/city/etc. when present so the settlement is shown by default.
+    Falls back to the first segments of ``display_name``, then truncation. See
+    ``docs/superpowers/plans/2026-06-07-geolocate-label-verbosity.md``.
     """
     data = _address_dict(resp)
     display_name = _clean(getattr(resp, "display_name", None))
@@ -151,16 +173,26 @@ def format_geolocation_overlay_label(
 
     street = _street_line(data)
     poi = _poi_line(data)
+    local = _first_field(data, _LOCAL_PLACE_KEYS)
+    settlement = _first_field(data, _SETTLEMENT_KEYS)
+
     if street:
         segments.append(street)
     elif poi:
         segments.append(poi)
 
-    place = _first_field(data, _PLACE_KEYS)
-    if place and (not segments or segments[0].lower() != place.lower()):
-        segments.append(place)
+    if street or poi:
+        _append_unique_segment(segments, local)
+        _append_unique_segment(segments, settlement)
+    else:
+        if local:
+            segments.append(local)
+            _append_unique_segment(segments, settlement)
+        elif settlement:
+            segments.append(settlement)
 
-    _append_region_for_disambiguation(segments, place, data)
+    place_for_region = settlement or local
+    _append_region_for_disambiguation(segments, place_for_region, data)
 
     if not segments:
         return _fallback_from_display_name(display_name, max_chars)

@@ -39,7 +39,7 @@ Created lazily with `CREATE TABLE IF NOT EXISTS` when the first connection succe
 | **`base_url`** | `TEXT NOT NULL` | Normalized Nominatim base URL (see below). Part of the primary key so caches from different servers (e.g. local Docker vs `nominatim.openstreetmap.org`) do not collide. |
 | **`lat_q`** | `REAL NOT NULL` | Quantized latitude (see **Coordinate quantization**). |
 | **`lon_q`** | `REAL NOT NULL` | Quantized longitude. |
-| **`display_name`** | `TEXT NOT NULL` | **Historical column name.** Stores the **formatted overlay label** returned to the video captioner (short string). Not renamed in v1 to avoid a migration step for existing installs. |
+| **`display_name`** | `TEXT NOT NULL` | **Historical column name.** Stores the **formatted overlay label** (e.g. street + neighbourhood + city when Nominatim provides them), not the raw JSON `display_name`. |
 | **`created_at`** | `TEXT NOT NULL DEFAULT (datetime('now'))` | SQLite UTC timestamp when the row was inserted or replaced (ISO-like string from `datetime('now')`). |
 
 **Primary key:** `(base_url, lat_q, lon_q)` — one row per server per cell.
