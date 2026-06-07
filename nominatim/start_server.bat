@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 
-rem GPXMapper — local Nominatim via Docker (Windows counterpart to nominatim/start_server.sh).
+rem GPXMapper - local Nominatim via Docker. Windows counterpart to nominatim/start_server.sh.
 rem Run from the folder that contains this file (same folder as gpxmapper.exe in the release ZIP).
 rem Override extract:  set PBF_URL=https://download.geofabrik.de/europe/...osm.pbf
 
@@ -48,8 +48,8 @@ echo OK  PBF_URL is reachable.
 
 echo.
 echo === Starting container ===
-echo First startup imports the PBF into the container — this can take a long time.
-echo When import finishes, GPXMapper defaults to http://localhost:8080 for --geolocate.
+echo First startup imports the PBF into the container - this can take a long time.
+echo When import finishes, GPXMapper defaults to http://localhost:8080 for reverse geocoding via the geolocate CLI flag.
 echo Ensure port 8080 is free; if Docker reports the port is already allocated, stop the other service.
 echo Optional checks:  gpxmapper.exe check-nominatim    or Git Bash:  bash verify_local_hungary.sh
 echo.

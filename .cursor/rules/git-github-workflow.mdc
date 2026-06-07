@@ -12,6 +12,7 @@ Coding and project context: **`gpxmapper-core.mdc`**, **`python-standards.mdc`**
 ## Commit message rules
 
 - Use the conventional commit format: `[<issue-number>] <type>(<scope>): <description>`
+- **Commitizen (pre-commit):** `.cz.toml` sets `allowed_prefixes` to include `[GPXM-`, so the hook accepts ticket-prefixed subjects. Commitizen does not parse “prefix + conventional” as one regex; that prefix entry means “starts with this string → skip regex,” so keep using `type(scope):` after the ticket (same line) per this rule—do not treat the prefix as a license to drop conventional form.
 - Determine the issue number from the branch name if possible (e.g. ticket key such as `GPXM-3` or `ABC-123`).
 - Issue number is mandatory
 - Scope: the affected module(s)

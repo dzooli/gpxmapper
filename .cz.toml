@@ -1,6 +1,18 @@
 [tool.commitizen]
 version = "0.2.0"
 name = "cz_conventional_commits"
+# Pre-commit `commitizen` hook: messages starting with one of these prefixes skip
+# strict conventional-regex validation. Include GPXM ticket prefix so subjects like
+# `[GPXM-1] fix(cli): ...` pass (see .cursor/rules/git-github-workflow.mdc).
+allowed_prefixes = [
+    "Merge",
+    "Revert",
+    "Pull request",
+    "fixup!",
+    "squash!",
+    "amend!",
+    "[GPXM-",
+]
 tag_format = "$version"
 version_scheme = "pep440"
 update_changelog_on_bump = true
