@@ -6,7 +6,6 @@ not remove this file. See :func:`resolve_reverse_geocode_cache_path`.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import sqlite3
 import threading
@@ -45,7 +44,12 @@ def resolve_reverse_geocode_cache_path() -> Path:
 
 
 class ReverseGeocodeCache:
-    """Thread-safe SQLite cache; safe to call from ``asyncio`` via :meth:`get` / :meth:`put`."""
+    """SQLite cache for reverse geocode results.
+
+    Use :meth:`get_sync` / :meth:`put_sync` from the asyncio event loop (e.g. prefetch
+    coroutine). Do not use ``asyncio.to_thread`` with one connection: sqlite3 ties
+    connections to the creating thread unless ``check_same_thread=False``.
+    """
 
     def __init__(self, db_path: Path) -> None:
         self._db_path = Path(db_path)
@@ -124,12 +128,6 @@ class ReverseGeocodeCache:
                 self._conn.commit()
         except sqlite3.Error as exc:
             logger.warning("Reverse geocode cache write failed: %s", exc)
-
-    async def get(self, base_url: str, lat: float, lon: float) -> str | None:
-        return await asyncio.to_thread(self.get_sync, base_url, lat, lon)
-
-    async def put(self, base_url: str, lat: float, lon: float, display_name: str) -> None:
-        await asyncio.to_thread(self.put_sync, base_url, lat, lon, display_name)
 
     def close_sync(self) -> None:
         """Close the DB connection (e.g. in tests)."""

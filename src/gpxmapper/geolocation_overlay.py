@@ -38,13 +38,13 @@ async def _reverse_label_from_cache_or_http(
 ) -> str:
     """Return display name from SQLite cache, or from Nominatim (then update cache)."""
     if cache is not None:
-        cached = await cache.get(base_url, lat, lon)
+        cached = cache.get_sync(base_url, lat, lon)
         if cached is not None:
             return cached
     resp = await client.reverse_geocode(lat, lon)
     label = resp.display_name
     if cache is not None:
-        await cache.put(base_url, lat, lon, label)
+        cache.put_sync(base_url, lat, lon, label)
     if throttle_public:
         await asyncio.sleep(PUBLIC_NOMINATIM_MIN_INTERVAL_SEC)
     return label
