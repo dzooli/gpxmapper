@@ -194,8 +194,16 @@ gpxmapper.exe info path\to\your\file.gpx
 - `--scrolling-text`, `-st`: Path to a text file containing content to be scrolled on the video
 - `--scrolling-speed`, `-ss`: Speed at which the text scrolls across the video (pixels per frame). If not specified, speed will be calculated based on video duration.
 - `--timezone`, `-tz`: Timezone to convert timestamps to. Must be a full timezone name (e.g., 'Europe/Budapest', 'US/Pacific'). If not specified, timestamps are not converted.
+- `--geolocate`: Enables reverse-geocoded address labels (Nominatim) instead of scrolling text. Conflicts with `--scrolling-text` / `--scrolling-speed`. See `docs/superpowers/plans/2026-06-07-nominatim-geolocate-cli.md`. Successful lookups are cached in SQLite next to the tile cache directory (not removed by `clear-cache`); see `docs/superpowers/plans/2026-06-07-reverse-geocode-sqlite-cache.md`.
 
 Note: The timestamp color is fixed to black (0,0,0) in the command-line interface but can be customized when using the library programmatically.
+
+### Nominatim server and `NOMINATIM_SERVER`
+
+When **`--geolocate`** is used, GPXMapper talks to a Nominatim-compatible server:
+
+- **`NOMINATIM_SERVER`** — Base URL of the instance (no trailing slash required). If unset, the default is **`http://localhost:8080`** (typical local Docker setup). For a **public** instance without running your own server, set **`NOMINATIM_SERVER=https://nominatim.openstreetmap.org`** and follow [OpenStreetMap’s Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/) (rate limits, attribution). A local server is **faster** for bulk reverse geocoding; the public service is rate-limited in code when that host is detected.
+- **Health check** — Before downloading map tiles or prefetching addresses, the tool calls **`GET …/status`** up to **three times** (with short backoff between failures). If all attempts fail, it prints a **clear error** (URL, last error, hints to start local Nominatim or change `NOMINATIM_SERVER`) and asks whether to **continue without reverse geolocation** or **abort**. The safe default is **abort**; you must explicitly confirm to continue without geolocation. If **stdin is not a terminal** (e.g. CI or pipes), the tool **aborts** without prompting and explains that interactive confirmation is not available.
 
 ### `info` command
 
@@ -205,6 +213,7 @@ Note: The timestamp color is fixed to black (0,0,0) in the command-line interfac
 
 Clears the map tiles cache directory to free up disk space. The path is the same default used by map renderers (
 `MapRendererBase.resolve_default_cache_directory()`), so it stays consistent regardless of sync vs async tile fetching.
+The reverse-geocode SQLite cache lives **next to** that directory and is **not** deleted by this command.
 
 ## Programmatic Usage
 

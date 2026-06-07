@@ -28,6 +28,9 @@ class _DummyCaptioner:
     def add_scrolling_text_to_frame(self, frame, frame_idx):  # noqa: ANN001
         return frame
 
+    def add_geolocation_text_to_frame(self, frame, frame_idx):  # noqa: ANN001
+        return frame
+
     def set_video_start_time(self, start_time):  # noqa: ANN001
         self.start_time = start_time
 
@@ -109,7 +112,8 @@ def test_write_video_frames_writes_expected_frame_count(vg: VideoGenerator) -> N
     points = [_point(0.0, 0.0, t0), _point(1.0, 1.0, t0 + timedelta(seconds=4))]
     writer = Mock()
     vg._write_video_frames(writer, points, duration_seconds=2, start_time=t0, total_track_seconds=4.0)
-    assert writer.write.call_count == 4  # fps=2 * duration=2
+    # fps=2 * duration=2
+    assert writer.write.call_count == 4
 
 
 def test_generate_video_raises_when_writer_not_opened(vg: VideoGenerator) -> None:

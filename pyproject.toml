@@ -17,9 +17,7 @@ description = "GPX to video mapper - creates videos from GPX tracks"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.12"
-authors = [
-    { name = "Zoltan Fabian", email = "zoltan.dzooli.fabian@gmail.com" },
-]
+authors = [{ name = "Zoltan Fabian", email = "zoltan.dzooli.fabian@gmail.com" }]
 keywords = [
     "gpx",
     "gps",
@@ -101,6 +99,11 @@ options = [
     "--hidden-import=zoneinfo",
     "--specpath=.",
 ]
+
+# Ruff (IDE extension / `ruff check` / `ruff format`). Line length applies to E501 and the formatter.
+# Flake8 does not read this table; use `.flake8` for max-line-length if Flake8 runs (see .vscode/settings.json).
+[tool.ruff]
+line-length = 120
 
 [tool.setuptools]
 package-dir = { "" = "src" }

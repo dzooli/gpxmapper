@@ -7,6 +7,7 @@ This module has been optimized for performance with the following improvements:
 4. Batch processing of frames for better memory management
 """
 
+import asyncio
 import concurrent.futures
 import csv
 import logging
@@ -14,7 +15,7 @@ import os
 import time
 import zoneinfo
 from datetime import datetime, timedelta
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -66,6 +67,8 @@ class VideoCaptioner:
         self.scrolling_text_width = 0
         self.video_duration = None  # Will be set later
         self.timezone = timezone
+
+        self._geolocation_labels: Optional[list[str]] = None
 
         # Initialize font manager
         self.font_manager = FontManager(font_file, font_scale)
@@ -281,6 +284,29 @@ class VideoCaptioner:
             self.timestamp_color, thickness
         )
 
+    def set_geolocation_labels(self, labels: list[str]) -> None:
+        """Set per-frame reverse-geocoded display strings (static overlay band)."""
+        self._geolocation_labels = labels
+
+    def add_geolocation_text_to_frame(self, frame: np.ndarray, frame_idx: int) -> np.ndarray:
+        """Draw static geolocation line when labels were prefetched."""
+        if not self._geolocation_labels or frame_idx >= len(self._geolocation_labels):
+            return frame
+        text = self._geolocation_labels[frame_idx]
+        if not text:
+            return frame
+        thickness = 2
+        (text_width, text_height), _ = self.font_manager.get_text_size(text, thickness)
+        margin = 10
+        x_pos = self._calculate_text_x_position(text_width, margin)
+        if self.show_timestamp:
+            y_pos = self.height - text_height - margin * 3
+        else:
+            y_pos = self.height - 20
+        return self.font_manager.render_text(
+            frame, text, (x_pos, y_pos), self.timestamp_color, thickness
+        )
+
     def add_scrolling_text_to_frame(self, frame: np.ndarray, frame_idx: int) -> np.ndarray:
         """Add scrolling text to the frame if provided.
 
@@ -291,6 +317,8 @@ class VideoCaptioner:
         Returns:
             The frame with scrolling text added
         """
+        if self._geolocation_labels is not None:
+            return frame
         if not self.scrolling_text or self.scrolling_speed is None:
             return frame
 
@@ -389,7 +417,8 @@ class VideoGenerator:
             show_timestamp=True,
             scrolling_text_file=None,
             scrolling_speed=None,
-            timezone=None
+            timezone=None,
+            geolocate=False,
         )
 
         # Initialize captioner
@@ -407,6 +436,8 @@ class VideoGenerator:
             scrolling_speed=default_text_config.scrolling_speed if text_config is None else text_config.scrolling_speed,
             timezone=default_text_config.timezone if text_config is None else text_config.timezone
         )
+
+        self._text_config = default_text_config if text_config is None else text_config
 
         # Cache for interpolated positions
         self._position_cache = {}
@@ -561,6 +592,7 @@ class VideoGenerator:
         frame = self.captioner.add_title_to_frame(frame)
         frame = self.captioner.add_caption_to_frame(frame, frame_seconds)
         frame = self.captioner.add_scrolling_text_to_frame(frame, frame_idx)
+        frame = self.captioner.add_geolocation_text_to_frame(frame, frame_idx)
 
         return frame
 
@@ -665,6 +697,21 @@ class VideoGenerator:
 
             logger.info(
                 f"Generating video with duration {duration_seconds}s from track spanning {total_track_seconds}s")
+
+            if self._text_config.geolocate:
+                from .geolocation_overlay import prefetch_geolocation_labels
+
+                labels = asyncio.run(
+                    prefetch_geolocation_labels(
+                        self,
+                        points_with_time,
+                        duration_seconds,
+                        self.fps,
+                        start_time,
+                        total_track_seconds,
+                    )
+                )
+                self.captioner.set_geolocation_labels(labels)
 
             # Calculate the bounding box of all track points
             min_lat = min(p.latitude for p in track_points)

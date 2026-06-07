@@ -1,6 +1,8 @@
 """Utility functions for the CLI commands."""
 
 import logging
+import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -8,9 +10,46 @@ import typer
 
 from ..gpx_parser import GPXParser
 from ..models import TextConfig, VideoConfig, MapConfig
+from ..nominatim_config import get_nominatim_base_url, probe_nominatim_status_sync
 from ..video_generator import VideoGenerator
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_text_config_after_nominatim_probe(text_config: TextConfig) -> TextConfig:
+    """If geolocate is requested, probe ``/status``; on failure optionally drop geolocation."""
+    if not text_config.geolocate:
+        return text_config
+    ok, err = probe_nominatim_status_sync()
+    if ok:
+        return text_config
+    base = get_nominatim_base_url()
+    typer.secho(
+        "\n".join(
+            [
+                "Nominatim server is unreachable.",
+                f"  URL: {base}",
+                "  After 3 attempts to GET /status, the last error was:",
+                f"  {err}",
+                "",
+                "Hints:",
+                "  - Start local Nominatim (e.g. Docker on port 8080), or",
+                "  - Set NOMINATIM_SERVER=https://nominatim.openstreetmap.org (see OSM usage policy), or",
+                "  - Check firewall / TLS / correct host and port.",
+            ]
+        ),
+        fg=typer.colors.RED,
+        err=True,
+    )
+    if not sys.stdin.isatty():
+        typer.secho(
+            "Not prompting because stdin is not a terminal; fix Nominatim or omit --geolocate.",
+            err=True,
+        )
+        raise typer.Abort()
+    if typer.confirm("Continue without reverse geolocation?", default=False):
+        return replace(text_config, geolocate=False)
+    raise typer.Abort()
 
 def create_text_config(
     font_scale: float,
@@ -21,7 +60,8 @@ def create_text_config(
     no_timestamp: bool = False,
     scrolling_text_file: Optional[str] = None,
     scrolling_speed: Optional[float] = None,
-    timezone: Optional[str] = None
+    timezone: Optional[str] = None,
+    geolocate: bool = False,
 ) -> TextConfig:
     """Create a TextConfig object from the given parameters.
 
@@ -36,6 +76,7 @@ def create_text_config(
         scrolling_speed: Optional speed at which the text scrolls across the video (pixels per frame)
         timezone: Optional timezone to convert timestamps to (e.g., 'Europe/London', 'US/Pacific')
                  If None, timestamps are not converted. Default is None.
+        geolocate: Enable Nominatim reverse-geocoded labels in the video (CLI ``--geolocate``); mutually exclusive with scrolling text options.
 
     Returns:
         TextConfig object
@@ -66,7 +107,8 @@ def create_text_config(
         show_timestamp=not no_timestamp,
         scrolling_text_file=scrolling_text_file,
         scrolling_speed=scrolling_speed,
-        timezone=timezone
+        timezone=timezone,
+        geolocate=geolocate,
     )
 
 def generate_video(
@@ -108,6 +150,8 @@ def generate_video(
     # Get time bounds
     start_time, end_time = parser.get_time_bounds()
     logger.info(f"Track time range: {start_time} to {end_time}")
+
+    text_config = _resolve_text_config_after_nominatim_probe(text_config)
 
     # Generate video
     logger.info(f"Generating video: {output_file}")

@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Relationship to other rules
 
-Coding and project context: **`gpxmapper-core.mdc`**, **`python-standards.mdc`**. This file is **git-only** (commits, branches, PRs).
+Coding and project context: **`gpxmapper-core.mdc`**, **`python-standards.mdc`**. This file is **git-only** (commits, branches, PRs) and is the **only** project rule for commit message format (no separate commit-message rule file).
 
 ## Commit message rules
 

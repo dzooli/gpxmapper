@@ -177,6 +177,7 @@ class TextConfig:
     scrolling_text_file: Optional[str] = None
     scrolling_speed: Optional[float] = None
     timezone: Optional[str] = None
+    geolocate: bool = False
 
 
 @dataclass(slots=True, frozen=True)

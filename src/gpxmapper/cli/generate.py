@@ -12,13 +12,14 @@ from . import app
 
 logger = logging.getLogger(__name__)
 
+
 @app.command()
 def generate(
     gpx_file: Path = typer.Argument(
-        ..., 
-        exists=True, 
-        file_okay=True, 
-        dir_okay=False, 
+        ...,
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
         readable=True,
         help="Path to the input GPX file"
     ),
@@ -126,6 +127,11 @@ def generate(
         min=0.1,
         help="Speed at which the text scrolls across the video (pixels per frame). If not specified, speed will be calculated based on video duration."
     ),
+    geolocate: bool = typer.Option(
+        False,
+        "--geolocate",
+        help="Show reverse-geocoded addresses (Nominatim) instead of scrolling text. Conflicts with --scrolling-text / --scrolling-speed.",
+    ),
     timezone: Optional[str] = typer.Option(
         None,
         "--timezone", "-tz",
@@ -141,6 +147,12 @@ def generate(
     try:
         # Parse marker color
         marker_color_tuple = parse_color(marker_color)
+
+        if geolocate and (scrolling_text is not None or scrolling_speed is not None):
+            raise typer.BadParameter(
+                "--geolocate cannot be used together with --scrolling-text (-st) or --scrolling-speed (-ss). "
+                "Omit scrolling options when using reverse geolocation."
+            )
 
         # Set default output file if not provided
         if output_file is None:
@@ -160,7 +172,8 @@ def generate(
             no_timestamp=no_timestamp,
             scrolling_text_file=str(scrolling_text) if scrolling_text else None,
             scrolling_speed=scrolling_speed,
-            timezone=timezone
+            timezone=timezone,
+            geolocate=geolocate,
         )
 
         video_config = VideoConfig(
@@ -188,6 +201,10 @@ def generate(
 
         logger.info(f"Video generated successfully: {output_path}")
 
-    except Exception as e:
-        logger.error(f"Error generating video: {e}")
+    except typer.BadParameter:
+        raise
+    except typer.Abort:
+        raise
+    except Exception:
+        logger.exception("Error generating video")
         raise typer.Abort()

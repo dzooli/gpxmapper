@@ -1,4 +1,6 @@
 #!/bin/bash
+# After the container is up and Nominatim has finished importing, verify Hungarian
+# geocoding: ./nominatim/verify_local_hungary.sh (override base URL with NOMINATIM_URL=...).
 
 # Set default PBF URL if not provided
 if [ -z "${PBF_URL}" ]; then

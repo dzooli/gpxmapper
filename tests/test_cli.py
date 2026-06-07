@@ -31,7 +31,7 @@ def cli_runner() -> CliRunner:
     return CliRunner()
 
 
-def _invoke(runner: CliRunner, args: list[str]) -> Result:
+def _invoke(runner: CliRunner, args: list[str], *, standalone_mode: bool = False) -> Result:
     """Invoke the Typer app in a way that works with Click's test runner.
 
     ``gpxmapper.cli`` calls ``basicConfig(StreamHandler(sys.stdout))`` at import
@@ -46,7 +46,7 @@ def _invoke(runner: CliRunner, args: list[str]) -> Result:
     root.handlers.clear()
     root.addHandler(logging.NullHandler())
     try:
-        return runner.invoke(app, args, standalone_mode=False)
+        return runner.invoke(app, args, standalone_mode=standalone_mode)
     finally:
         root.handlers.clear()
         for handler in saved_handlers:
@@ -112,6 +112,12 @@ def test_create_text_config_builds_dataclass():
     assert cfg.font_file == "/tmp/f.ttf"
     assert cfg.show_timestamp is False
     assert cfg.timezone == "Europe/Budapest"
+    assert cfg.geolocate is False
+
+
+def test_create_text_config_geolocate_true():
+    cfg = create_text_config(font_scale=1.0, geolocate=True)
+    assert cfg.geolocate is True
 
 
 def test_create_text_config_rejects_bad_alignment():
@@ -159,6 +165,7 @@ def test_app_help_lists_commands(cli_runner: CliRunner):
     assert "generate" in result.stdout
     assert "info" in result.stdout
     assert "clear-cache" in result.stdout
+    assert "check-nominatim" in result.stdout
 
 
 def test_info_success(cli_runner: CliRunner, gpx_with_times: Path):
@@ -203,6 +210,28 @@ def test_generate_aborts_on_bad_marker_color(
         ["generate", str(gpx_with_times), "--marker-color", "notrgb"],
     )
     assert result.exit_code != 0
+
+
+def test_generate_geolocate_conflicts_with_scrolling_text(
+        cli_runner: CliRunner, gpx_with_times: Path, tmp_path: Path
+):
+    scroll = tmp_path / "scroll.txt"
+    scroll.write_text("hello", encoding="utf-8")
+    result = _invoke(
+        cli_runner,
+        [
+            "generate",
+            str(gpx_with_times),
+            "--geolocate",
+            "--scrolling-text",
+            str(scroll),
+        ],
+        standalone_mode=True,
+    )
+    assert result.exit_code != 0
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "--geolocate" in combined
+    assert "scrolling" in combined.lower()
 
 
 def test_generate_aborts_when_generate_video_fails(
