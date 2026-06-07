@@ -2,6 +2,7 @@
 
 ### Feat
 
+- Reverse geocode for video overlays (`--geolocate`): Nominatim-backed short labels and SQLite-backed cache (see `clear-cache --geolocation`).
 - Add `--text-color` / `-tc` to `gpxmapper generate` for R,G,B text overlay color (same format as `--marker-color`).
 - Windows build/release ZIPs include `start_server.bat`, `start_server.sh`, `verify_local_hungary.sh`, and `doc/USER_GUIDE.md` next to `gpxmapper.exe`.
 - Add `scripts/package-windows-release.ps1` to build the same ZIP locally after `build_exe.py`.
