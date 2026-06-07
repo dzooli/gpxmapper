@@ -71,6 +71,6 @@ End-user and troubleshooting detail: **README.md**, **docs/**.
 ## Other Cursor rules in this repo
 
 - **`python-standards.mdc`** — Python (`**/*.py`)
-- **`git-github-workflow.mdc`** — commits, branches, PRs (GitHub)
+- **`git-github-workflow.mdc`** — commits, branches, PRs (GitHub). Commit **subject** must start with `[KEY-n]` (enforced by `scripts/check_commit_message.py` via pre-commit `commit-msg`).
 
 Together with this file, they form the **canonical Cursor rule set** for automation.

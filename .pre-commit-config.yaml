@@ -6,3 +6,11 @@ repos:
     - pre-push
   repo: https://github.com/commitizen-tools/commitizen
   rev: v4.7.0
+- repo: local
+  hooks:
+  - id: commit-msg-require-ticket-key
+    name: require issue key on commit subject (first line)
+    entry: python scripts/check_commit_message.py
+    language: system
+    stages: [commit-msg]
+    minimum_pre_commit_version: "3.2.0"

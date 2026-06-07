@@ -11,16 +11,17 @@ Coding and project context: **`gpxmapper-core.mdc`**, **`python-standards.mdc`**
 
 ## Commit message rules
 
-- Use the conventional commit format: `[<issue-number>] <type>(<scope>): <description>`
-- Determine the issue number from the branch name if possible (e.g. ticket key such as `GPXM-3` or `ABC-123`).
-- Issue number is mandatory
-- Scope: the affected module(s)
-- Types: feat, fix, docs, style, refactor, test, chore, perf
-- Keep the description concise (under 50 characters)
-- Use imperative mood (e.g., "add" not "added" or "adds")
-- Don't end with a period
-- Use lowercase for the first word unless it's a proper noun
-- Provide more details in the commit body, separated by a blank line
+- **Subject line (mandatory):** `[<KEY>-<number>] <type>(<scope>): <description>` — the **issue key and number must appear at the start of the first line**, then a space, then conventional `type`, optional `(scope)`, optional `!`, colon, space, and a non-empty description. Examples: `[GPXM-1] fix(cli): handle bad color`, `[GPXM-3] chore(ci): refresh workflow`.
+- **Enforcement:** `pre-commit` runs `scripts/check_commit_message.py` on the `commit-msg` stage (after installing hooks: `uv run pre-commit install --hook-type commit-msg`). Exempt first lines: `Merge `, `Revert `, `Pull request`, `fixup!`, `squash!`, `amend!` (prefix match as in the script).
+- **Commitizen:** `.cz.toml` sets `allowed_prefixes` to include `[GPXM-` so the Commitizen hook accepts GPXM ticket–prefixed subjects (it skips strict regex for those prefixes); the ticket-key script above still requires the full `[KEY-n] type…` shape for normal commits.
+- Determine `<KEY>-<number>` from the branch name when possible (e.g. `GPXM-1-nominatim-…` → `[GPXM-1]`, or `ABC-123` → `[ABC-123]`).
+- Scope: the affected module(s); omit only when truly global (`chore: …` with empty scope is allowed if type allows it).
+- Types: feat, fix, docs, style, refactor, test, chore, perf, build, ci, bump, revert (see script for the exact allowed set).
+- Keep the description concise (under ~50 characters when practical).
+- Use imperative mood (e.g., "add" not "added" or "adds").
+- Do not end the subject with a period.
+- Use lowercase for the first word of the description unless it is a proper noun.
+- Put extra context in the **body** after a blank line (optional but encouraged).
 
 ## Branch naming conventions
 
