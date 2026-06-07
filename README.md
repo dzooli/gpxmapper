@@ -198,7 +198,7 @@ gpxmapper.exe info path\to\your\file.gpx
 - `--scrolling-text`, `-st`: Path to a text file containing content to be scrolled on the video
 - `--scrolling-speed`, `-ss`: Speed at which the text scrolls across the video (pixels per frame). If not specified, speed will be calculated based on video duration.
 - `--timezone`, `-tz`: Timezone to convert timestamps to. Must be a full timezone name (e.g., 'Europe/Budapest', 'US/Pacific'). If not specified, timestamps are not converted.
-- `--geolocate`: Enables reverse-geocoded address labels (Nominatim) instead of scrolling text. Conflicts with `--scrolling-text` / `--scrolling-speed`. See `docs/superpowers/plans/2026-06-07-nominatim-geolocate-cli.md`. Successful lookups are cached in SQLite next to the tile cache directory (removed only by `clear-cache --geolocation`, not by plain `clear-cache`); see `docs/superpowers/plans/2026-06-07-reverse-geocode-sqlite-cache.md`.
+- `--geolocate`: Enables reverse-geocoded location labels (Nominatim) instead of scrolling text. The on-screen line is a **short formatted** string from structured address fields (not the full raw `display_name`); see `docs/superpowers/plans/2026-06-07-geolocate-label-verbosity.md`. Conflicts with `--scrolling-text` / `--scrolling-speed`. See also `docs/superpowers/plans/2026-06-07-nominatim-geolocate-cli.md`. Successful lookups are cached in SQLite next to the tile cache directory (removed only by `clear-cache --geolocation`, not by plain `clear-cache`); see `docs/superpowers/plans/2026-06-07-reverse-geocode-sqlite-cache.md`.
 
 Note: The timestamp color is fixed to black (0,0,0) in the command-line interface but can be customized when using the library programmatically.
 

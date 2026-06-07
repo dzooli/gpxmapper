@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, List, Optional
 
 from .geolocation_clients import GeolocationClientFactory
+from .geolocation_label_format import format_geolocation_overlay_label
 from .models import GPXTrackPoint
 from .nominatim_config import (
     PUBLIC_NOMINATIM_MIN_INTERVAL_SEC,
@@ -36,13 +37,13 @@ async def _reverse_label_from_cache_or_http(
     lon: float,
     throttle_public: bool,
 ) -> str:
-    """Return display name from SQLite cache, or from Nominatim (then update cache)."""
+    """Return overlay label from SQLite cache, or from Nominatim (formatted, then cached)."""
     if cache is not None:
         cached = cache.get_sync(base_url, lat, lon)
         if cached is not None:
             return cached
     resp = await client.reverse_geocode(lat, lon)
-    label = resp.display_name
+    label = format_geolocation_overlay_label(resp)
     if cache is not None:
         cache.put_sync(base_url, lat, lon, label)
     if throttle_public:

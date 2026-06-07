@@ -1,8 +1,12 @@
-"""SQLite cache for Nominatim reverse-geocode ``display_name`` results.
+"""SQLite cache for reverse-geocode **overlay labels** (short display strings).
 
 Stored next to the map tile cache directory (not inside it). Use
 ``gpxmapper clear-cache --geolocation`` to remove this file. See
 :func:`resolve_reverse_geocode_cache_path`.
+
+Rows store the same string drawn on video (from
+:func:`~gpxmapper.geolocation_label_format.format_geolocation_overlay_label`), not
+necessarily the raw Nominatim ``display_name``.
 """
 
 from __future__ import annotations
@@ -93,7 +97,7 @@ class ReverseGeocodeCache:
                 self._conn = None
 
     def get_sync(self, base_url: str, lat: float, lon: float) -> str | None:
-        """Return cached ``display_name`` or ``None``."""
+        """Return cached overlay label, or ``None``."""
         self._ensure_connection()
         if self._disabled or self._conn is None:
             return None
@@ -111,7 +115,7 @@ class ReverseGeocodeCache:
             return None
 
     def put_sync(self, base_url: str, lat: float, lon: float, display_name: str) -> None:
-        """Store a row (best-effort; logs and ignores SQLite errors)."""
+        """Store a formatted overlay string (best-effort; logs and ignores SQLite errors)."""
         self._ensure_connection()
         if self._disabled or self._conn is None:
             return
