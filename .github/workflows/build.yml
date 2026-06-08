@@ -48,5 +48,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: gpxmapper-windows-bundle
-        path: ${{ env.BUNDLE_DIR }}/
+        # No trailing slash: with path/..., upload-artifact uploads directory *contents*
+        # only, so the download would lack the gpxmapper-v{version} parent folder.
+        path: ${{ env.BUNDLE_DIR }}
         retention-days: 1

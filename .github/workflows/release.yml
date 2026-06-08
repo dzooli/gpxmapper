@@ -62,18 +62,20 @@ jobs:
         Copy-Item "nominatim\start_server.bat" -Destination "$bundleDir\"
         Copy-Item "install\doc\USER_GUIDE.md" -Destination "$bundleDir\doc\"
         $zipName = "gpxmapper-v$version.zip"
-        Compress-Archive -Path "$bundleDir\*" -DestinationPath $zipName
+        # Compress the folder, not $bundleDir\*, so the zip root is gpxmapper-v{version}/
+        Compress-Archive -LiteralPath $bundleDir -DestinationPath $zipName
         echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
         echo "BUNDLE_DIR=$bundleDir" >> $env:GITHUB_ENV
       shell: pwsh
 
-    # Upload the folder, not the .zip, so the Actions download is not
-    # artifact-name/*.zip (double zip naming). The GitHub Release still attaches the real zip below.
+    # Upload the folder (not the .zip) so the Actions download is not artifact-name/*.zip.
+    # Use path without a trailing slash so the artifact keeps the gpxmapper-v{version} root folder.
+    # The GitHub Release still attaches the real zip below.
     - name: Upload release bundle folder as artifact
       uses: actions/upload-artifact@v4
       with:
         name: windows-release-bundle
-        path: ${{ env.BUNDLE_DIR }}/
+        path: ${{ env.BUNDLE_DIR }}
         retention-days: 1
 
     - name: Create GitHub Release

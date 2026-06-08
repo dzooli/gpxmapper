@@ -148,7 +148,7 @@ This is the simplest method that handles all dependencies automatically:
   ```powershell
   pwsh -File .\scripts\package-windows-release.ps1
   ```
-  This recreates a **`gpxmapper-v{version}\`** folder (version from **pyproject.toml**) and writes **`gpxmapper-release.zip`** (override with `-ZipPath` and `-StagingDirectory` if needed). **Build Windows Executable** uses the same layout and uploads artifact **`gpxmapper-windows-bundle`** (Actions zips it once; no nested `*.zip`).
+  This recreates a **`gpxmapper-v{version}\`** folder (version from **pyproject.toml**) and writes **`gpxmapper-release.zip`** with that folder at the zip root (override with `-ZipPath` and `-StagingDirectory` if needed). **Build Windows Executable** uploads artifact **`gpxmapper-windows-bundle`** the same way: unzip once and you get **`gpxmapper-v{version}\`** containing the files (no nested `*.zip`).
 
 ## Usage
 

@@ -63,7 +63,8 @@ Copy-Item -LiteralPath (Join-Path $RepoRoot 'install\doc\USER_GUIDE.md') -Destin
 if (Test-Path -LiteralPath $ZipPath) {
     Remove-Item -LiteralPath $ZipPath -Force
 }
-Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $ZipPath
+# Zip the folder itself so extraction yields gpxmapper-v{version}\... (not loose files).
+Compress-Archive -LiteralPath $stage -DestinationPath $ZipPath
 
 Write-Host "Packaged: $ZipPath" -ForegroundColor Green
 Write-Host "Staging left at: $stage (delete when done if you do not need it)" -ForegroundColor DarkGray
