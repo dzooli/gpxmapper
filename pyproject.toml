@@ -81,6 +81,7 @@ dev = [
     "mkdocstrings>=0.25.0",
     "mkdocstrings-python>=1.10.0",
     "pymdown-extensions>=10.8",
+    "pip-licenses>=5.5.5",
 ]
 
 [tool.pyinstaller]

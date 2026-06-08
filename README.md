@@ -157,6 +157,15 @@ This is the simplest method that handles all dependencies automatically:
   ```
   Staging matches CI: **`release\gpxmapper-v{version}\`** (version from **pyproject.toml**), then **`gpxmapper-release.zip`** with **`gpxmapper-v{version}\`** at the zip root. **Build Windows Executable** assembles the same tree under **`release\`** and uploads **`release/`** as the artifact so the download unpacks to **`gpxmapper-v{version}\`** (no nested `*.zip`).
 
+## Third-party licenses (Windows executable and ZIP)
+
+This is practical redistribution hygiene, not legal advice. If unsure, use a license or compliance checklist for your situation.
+
+- **Your `LICENSE` (MIT)** covers **this project’s own source**. The **frozen `gpxmapper.exe`** also contains **Python wheels and native libraries** pulled in by PyInstaller (for example **OpenCV**, **NumPy**, **Pillow**, **Typer** / **Click**, **HTTP** stacks, and whatever those wheels ship on Windows — often **DLLs** you never import by name). Each component has its **own** license (MIT, BSD, Apache-2.0, etc.) with its **own** notice and copy requirements when you redistribute binaries.
+- **What to ship with the app:** a common pattern is a **`THIRD_PARTY_NOTICES`**, **`NOTICES.txt`**, or **`ThirdPartyLicenses.md`** file **next to the executable** in the Windows bundle (same folder as **`README.md`** / **`LICENSE`** today), listing **project name, version, SPDX identifier (if known), and full or linked license text** for every bundled dependency. Regenerate or re-check it when **`pyproject.toml` / `uv.lock`** changes. Tools that help collect Python-side metadata include **`pip-licenses`**, **`pipdeptree`**, or SBOM generators (e.g. **CycloneDX**-oriented flows); they do **not** automatically know every **native DLL** inside a wheel, so treat them as a starting point.
+- **OpenH264 specifically:** Some OpenCV / FFmpeg builds use **Cisco’s OpenH264** for H.264-related paths. **Whether your shipped exe actually contains OpenH264** depends on the **exact `opencv-python` wheel** and how video I/O is built — it is **not** implied solely by using **`fourcc('mp4v')`** in code. To see what OpenCV reports for a given build, run from the same environment (or a small script next to the frozen exe): **`python -c "import cv2; print(cv2.getBuildInformation())"`** and inspect the build log for FFmpeg / OpenH264. For the **onefile exe**, you can also inspect extracted runtime files under **`sys._MEIPASS`** while the app runs, or use a **PE/DLL inspection** tool on **`dist\gpxmapper.exe`** and bundled binaries. **If** OpenH264 (or any other third-party binary) is present, include the **copyright and license terms required by that project** (for OpenH264, Cisco’s published **BSD-like** terms and notices for the binary redistribution program).
+- **Keeping the bundle honest:** add your notices file to **`scripts/package-windows-release.ps1`** and **`.github/workflows/build.yml` / `release.yml`** alongside the other copied artifacts whenever you start maintaining **`THIRD_PARTY_NOTICES`** (or equivalent) in the repo.
+
 ## Usage
 
 ### Logging

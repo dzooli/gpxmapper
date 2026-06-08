@@ -168,6 +168,7 @@ gpxmapper-release.zip
 
 # MkDocs output (regenerate with scripts/build-docs.*)
 docs/build/
+scripts/licenses/
 
 .ruff_cache/
 .continue/
