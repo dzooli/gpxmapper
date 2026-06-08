@@ -36,6 +36,13 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 analogous to map renderers).
 - **`nominatim/`** (at repository root, not the Python package) — **`start_server.sh`** and **`start_server.bat`** (Windows) bring up local **Docker** Nominatim on port **8080** (default **`PBF_URL`** Hungary); **`verify_local_hungary.sh`** for **`/status`** and sample reverse checks. All three are **copied into the Windows release ZIP** next to `gpxmapper.exe`, with **`install/doc/USER_GUIDE.md`** shipped as **`doc/USER_GUIDE.md`**. Details under **Nominatim server and `NOMINATIM_SERVER`** below.
 
+### `dist/` vs `install/` in this repository
+
+These names are easy to confuse with “installing” the app or with generic Python layout; here they mean something specific to this project:
+
+- **`dist/`** — **PyInstaller output** after **`python build_exe.py`**: the build writes **`dist/gpxmapper.exe`** (and transient build metadata elsewhere). Treat it as a **generated build artifact** (usually git-ignored), meaning “what the Windows exe build produced,” not “the folder where the user installed the program.”
+- **`install/`** — **Source files** in the repo aimed at **end users of the Windows ZIP** (not **`pip install`** targets). Today that is mainly **`install/doc/USER_GUIDE.md`**, which CI and **`scripts/package-windows-release.ps1`** copy into the bundle as **`doc/USER_GUIDE.md`**. It is **not** Python’s **`site-packages`**, **`/usr/local`**, or the directory where you unzip the release — see **`install/README.md`** for how paths map into the ZIP.
+
 ### Map tile cache locations (default)
 
 When `cache_dir` is not overridden, tiles are stored under:
