@@ -161,8 +161,9 @@ __pypackages__/
 /coverage.lcov
 /site
 
-# Local Windows release ZIP staging (scripts/package-windows-release.ps1)
+# Local Windows release ZIP staging (scripts/package-windows-release.ps1, CI bundle dir)
 release/
+gpxmapper-v*/
 gpxmapper-release.zip
 
 # MkDocs output (regenerate with scripts/build-docs.*)

@@ -49,27 +49,31 @@ jobs:
 
     - name: Create release zip
       run: |
-        $releaseDir = "release"
-        New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
-        New-Item -ItemType Directory -Path "$releaseDir\doc" -Force | Out-Null
-        Copy-Item "dist\gpxmapper.exe" -Destination "$releaseDir\"
-        Copy-Item "README.md" -Destination "$releaseDir\"
-        Copy-Item "LICENSE" -Destination "$releaseDir\"
-        Copy-Item "CHANGELOG.md" -Destination "$releaseDir\"
-        Copy-Item "nominatim\start_server.sh" -Destination "$releaseDir\"
-        Copy-Item "nominatim\verify_local_hungary.sh" -Destination "$releaseDir\"
-        Copy-Item "nominatim\start_server.bat" -Destination "$releaseDir\"
-        Copy-Item "install\doc\USER_GUIDE.md" -Destination "$releaseDir\doc\"
-        $zipName = "gpxmapper-v${{ steps.cz.outputs.version }}.zip"
-        Compress-Archive -Path "$releaseDir\*" -DestinationPath $zipName
+        $version = "${{ steps.cz.outputs.version }}"
+        $bundleDir = "gpxmapper-v$version"
+        New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
+        New-Item -ItemType Directory -Path "$bundleDir\doc" -Force | Out-Null
+        Copy-Item "dist\gpxmapper.exe" -Destination "$bundleDir\"
+        Copy-Item "README.md" -Destination "$bundleDir\"
+        Copy-Item "LICENSE" -Destination "$bundleDir\"
+        Copy-Item "CHANGELOG.md" -Destination "$bundleDir\"
+        Copy-Item "nominatim\start_server.sh" -Destination "$bundleDir\"
+        Copy-Item "nominatim\verify_local_hungary.sh" -Destination "$bundleDir\"
+        Copy-Item "nominatim\start_server.bat" -Destination "$bundleDir\"
+        Copy-Item "install\doc\USER_GUIDE.md" -Destination "$bundleDir\doc\"
+        $zipName = "gpxmapper-v$version.zip"
+        Compress-Archive -Path "$bundleDir\*" -DestinationPath $zipName
         echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
+        echo "BUNDLE_DIR=$bundleDir" >> $env:GITHUB_ENV
       shell: pwsh
 
-    - name: Upload release zip as artifact
+    # Upload the folder, not the .zip, so the Actions download is not
+    # artifact-name/*.zip (double zip naming). The GitHub Release still attaches the real zip below.
+    - name: Upload release bundle folder as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: release-zip
-        path: ${{ env.ZIP_NAME }}
+        name: windows-release-bundle
+        path: ${{ env.BUNDLE_DIR }}/
         retention-days: 1
 
     - name: Create GitHub Release

@@ -13,12 +13,13 @@
   Output ZIP file path. Default: gpxmapper-release.zip in the repository root.
 
 .PARAMETER StagingDirectory
-  Staging folder under the repo root (recreated each run). Default: release
-  (matches .github/workflows/build.yml).
+  Staging folder under the repo root (recreated each run). Default: empty =
+  **gpxmapper-v{version}** from pyproject.toml (matches CI). Pass e.g. `release`
+  to use a fixed folder name.
 #>
 param(
     [string]$ZipPath = "",
-    [string]$StagingDirectory = "release"
+    [string]$StagingDirectory = ""
 )
 
 $ErrorActionPreference = 'Stop'
@@ -35,6 +36,11 @@ if ([string]::IsNullOrWhiteSpace($ZipPath)) {
 }
 elseif (-not [System.IO.Path]::IsPathRooted($ZipPath)) {
     $ZipPath = Join-Path $RepoRoot $ZipPath
+}
+
+if ([string]::IsNullOrWhiteSpace($StagingDirectory)) {
+    $version = python -c "import tomli; print(tomli.load(open(r'$RepoRoot\pyproject.toml', 'rb'))['project']['version'])"
+    $StagingDirectory = "gpxmapper-v$version"
 }
 
 $stage = Join-Path $RepoRoot $StagingDirectory
