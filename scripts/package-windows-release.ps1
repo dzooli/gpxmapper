@@ -14,8 +14,8 @@
 
 .PARAMETER StagingDirectory
   Staging folder under the repo root (recreated each run). Default: empty =
-  **gpxmapper-v{version}** from pyproject.toml (matches CI). Pass e.g. `release`
-  to use a fixed folder name.
+  **release\gpxmapper-v{version}** from pyproject.toml (matches CI). Pass any path
+  to override (e.g. a single folder name under the repo root).
 #>
 param(
     [string]$ZipPath = "",
@@ -40,7 +40,7 @@ elseif (-not [System.IO.Path]::IsPathRooted($ZipPath)) {
 
 if ([string]::IsNullOrWhiteSpace($StagingDirectory)) {
     $version = python -c "import tomli; print(tomli.load(open(r'$RepoRoot\pyproject.toml', 'rb'))['project']['version'])"
-    $StagingDirectory = "gpxmapper-v$version"
+    $StagingDirectory = "release\gpxmapper-v$version"
 }
 
 $stage = Join-Path $RepoRoot $StagingDirectory

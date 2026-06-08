@@ -50,8 +50,9 @@ jobs:
     - name: Create release zip
       run: |
         $version = "${{ steps.cz.outputs.version }}"
-        $bundleDir = "gpxmapper-v$version"
-        New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
+        $root = "release"
+        if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force }
+        $bundleDir = "$root\gpxmapper-v$version"
         New-Item -ItemType Directory -Path "$bundleDir\doc" -Force | Out-Null
         Copy-Item "dist\gpxmapper.exe" -Destination "$bundleDir\"
         Copy-Item "README.md" -Destination "$bundleDir\"
@@ -62,20 +63,18 @@ jobs:
         Copy-Item "nominatim\start_server.bat" -Destination "$bundleDir\"
         Copy-Item "install\doc\USER_GUIDE.md" -Destination "$bundleDir\doc\"
         $zipName = "gpxmapper-v$version.zip"
-        # Compress the folder, not $bundleDir\*, so the zip root is gpxmapper-v{version}/
+        # Zip release\gpxmapper-v{version} so archive root is gpxmapper-v{version}/
         Compress-Archive -LiteralPath $bundleDir -DestinationPath $zipName
         echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
-        echo "BUNDLE_DIR=$bundleDir" >> $env:GITHUB_ENV
       shell: pwsh
 
-    # Upload the folder (not the .zip) so the Actions download is not artifact-name/*.zip.
-    # Use path without a trailing slash so the artifact keeps the gpxmapper-v{version} root folder.
-    # The GitHub Release still attaches the real zip below.
+    # Same layout as build.yml: release/ contains only gpxmapper-v{version}/; path release/
+    # uploads that folder as the artifact root. GitHub Release attaches the zip above.
     - name: Upload release bundle folder as artifact
       uses: actions/upload-artifact@v4
       with:
         name: windows-release-bundle
-        path: ${{ env.BUNDLE_DIR }}
+        path: release/
         retention-days: 1
 
     - name: Create GitHub Release

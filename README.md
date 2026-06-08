@@ -79,7 +79,7 @@ The wrappers set **`NO_MKDOCS_2_WARNING=1`** (Material for MkDocs — silences t
 
 For Windows users who don't want to install Python or any dependencies:
 
-1. Download the latest **release ZIP** from the [releases page](https://github.com/dzooli/gpxmapper/releases) (the archive contains `gpxmapper.exe`, readme, license, Nominatim helper scripts, and **`doc\USER_GUIDE.md`**).
+1. Download the latest **release ZIP** from the [releases page](https://github.com/dzooli/gpxmapper/releases). Extract it to get **`gpxmapper-v{version}\`** with `gpxmapper.exe`, readme, license, Nominatim helper scripts, and **`doc\USER_GUIDE.md`**.
 2. Unzip it into a folder of your choice (your **installation directory**).
 3. Open **Command Prompt** or **PowerShell**, `cd` into that folder, and run:
 
@@ -148,7 +148,7 @@ This is the simplest method that handles all dependencies automatically:
   ```powershell
   pwsh -File .\scripts\package-windows-release.ps1
   ```
-  This recreates a **`gpxmapper-v{version}\`** folder (version from **pyproject.toml**) and writes **`gpxmapper-release.zip`** with that folder at the zip root (override with `-ZipPath` and `-StagingDirectory` if needed). **Build Windows Executable** uploads artifact **`gpxmapper-windows-bundle`** the same way: unzip once and you get **`gpxmapper-v{version}\`** containing the files (no nested `*.zip`).
+  Staging matches CI: **`release\gpxmapper-v{version}\`** (version from **pyproject.toml**), then **`gpxmapper-release.zip`** with **`gpxmapper-v{version}\`** at the zip root. **Build Windows Executable** assembles the same tree under **`release\`** and uploads **`release/`** as the artifact so the download unpacks to **`gpxmapper-v{version}\`** (no nested `*.zip`).
 
 ## Usage
 

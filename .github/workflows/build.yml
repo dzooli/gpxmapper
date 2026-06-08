@@ -24,14 +24,16 @@ jobs:
       run: |
         python build_exe.py
 
-    # Assemble a folder only. upload-artifact already zips the download; pre-zipping
-    # with the same basename as the artifact produced a confusing layout (folder
-    # matching the artifact name containing a same-named *.zip).
+    # Stage under release/gpxmapper-v{version}/. upload-artifact with path release/
+    # (trailing slash) uploads *contents* of release/ — one child folder — so the
+    # download root is gpxmapper-v{version}/ (no loose files, no extra release/ prefix).
+    # Do not pre-zip for upload-artifact (single zip layer from Actions).
     - name: Assemble Windows bundle folder
       run: |
         $version = python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['project']['version'])"
-        $bundleDir = "gpxmapper-v$version"
-        New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
+        $root = "release"
+        if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force }
+        $bundleDir = "$root\gpxmapper-v$version"
         New-Item -ItemType Directory -Path "$bundleDir\doc" -Force | Out-Null
         Copy-Item "dist\gpxmapper.exe" -Destination "$bundleDir\"
         Copy-Item "README.md" -Destination "$bundleDir\"
@@ -41,14 +43,11 @@ jobs:
         Copy-Item "nominatim\verify_local_hungary.sh" -Destination "$bundleDir\"
         Copy-Item "nominatim\start_server.bat" -Destination "$bundleDir\"
         Copy-Item "install\doc\USER_GUIDE.md" -Destination "$bundleDir\doc\"
-        echo "BUNDLE_DIR=$bundleDir" >> $env:GITHUB_ENV
       shell: pwsh
 
     - name: Upload Windows bundle artifact
       uses: actions/upload-artifact@v4
       with:
         name: gpxmapper-windows-bundle
-        # No trailing slash: with path/..., upload-artifact uploads directory *contents*
-        # only, so the download would lack the gpxmapper-v{version} parent folder.
-        path: ${{ env.BUNDLE_DIR }}
+        path: release/
         retention-days: 1
