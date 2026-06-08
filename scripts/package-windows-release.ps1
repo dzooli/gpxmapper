@@ -5,7 +5,7 @@
 
 .DESCRIPTION
   Copies dist\gpxmapper.exe, README, LICENSE, CHANGELOG, Nominatim helpers, and
-  doc\USER_GUIDE.md into a staging folder, then Compress-Archive.
+  doc\USER_GUIDE.md plus doc\THIRD_PARTY_NOTICES.md into a staging folder, then Compress-Archive.
 
   Run **python build_exe.py** first so dist\gpxmapper.exe exists.
 
@@ -59,6 +59,7 @@ Copy-Item -LiteralPath (Join-Path $RepoRoot 'nominatim\start_server.sh') -Destin
 Copy-Item -LiteralPath (Join-Path $RepoRoot 'nominatim\verify_local_hungary.sh') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $RepoRoot 'nominatim\start_server.bat') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $RepoRoot 'install\doc\USER_GUIDE.md') -Destination $docDir
+Copy-Item -LiteralPath (Join-Path $RepoRoot 'install\doc\THIRD_PARTY_NOTICES.md') -Destination $docDir
 
 if (Test-Path -LiteralPath $ZipPath) {
     Remove-Item -LiteralPath $ZipPath -Force

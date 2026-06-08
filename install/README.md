@@ -8,6 +8,13 @@ These files are **not** part of the Python package; they are staged for the **Wi
 | `nominatim/start_server.sh` | `start_server.sh` |
 | `nominatim/verify_local_hungary.sh` | `verify_local_hungary.sh` |
 | `install/doc/USER_GUIDE.md` | `doc/USER_GUIDE.md` |
+| `install/doc/THIRD_PARTY_NOTICES.md` | `doc/THIRD_PARTY_NOTICES.md` |
+
+Regenerate **`install/doc/THIRD_PARTY_NOTICES.md`** after dependency changes:
+
+```bash
+python scripts/generate_third_party_notices.py
+```
 
 Edit **`install/doc/USER_GUIDE.md`** for end-user wording aimed at the unzip layout; **`docs/userdocs/index.md`** stays the MkDocs “home” and documents **both** clone paths and ZIP paths. The same **`USER_GUIDE.md`** is embedded on the static site via **`docs/userdocs/windows-bundle.md`** (pymdownx snippets). Build the site with **`scripts/build-docs.ps1`** / **`scripts/build-docs.sh`** (see README **Documentation (MkDocs)**).
 

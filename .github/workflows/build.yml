@@ -43,6 +43,7 @@ jobs:
         Copy-Item "nominatim\verify_local_hungary.sh" -Destination "$bundleDir\"
         Copy-Item "nominatim\start_server.bat" -Destination "$bundleDir\"
         Copy-Item "install\doc\USER_GUIDE.md" -Destination "$bundleDir\doc\"
+        Copy-Item "install\doc\THIRD_PARTY_NOTICES.md" -Destination "$bundleDir\doc\"
       shell: pwsh
 
     - name: Upload Windows bundle artifact

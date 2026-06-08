@@ -14,6 +14,7 @@ This file is shipped inside the **release ZIP** as `doc\USER_GUIDE.md`, next to 
 | `start_server.sh` | **Linux / macOS / Git Bash / WSL** — same Docker flow as the repository’s `nominatim/start_server.sh`. |
 | `verify_local_hungary.sh` | Optional health checks for a **Hungary** extract (needs **Git Bash**, **WSL**, or another Unix shell plus `curl` and `python`). |
 | `doc\USER_GUIDE.md` | This guide. |
+| `doc\THIRD_PARTY_NOTICES.md` | Third-party Python packages in the executable (license summary + Apache 2.0 / MPL 2.0 full texts). |
 
 Run the executable from a **Command Prompt** or **PowerShell** after `cd` into the installation directory, for example:
 

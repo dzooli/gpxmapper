@@ -34,14 +34,14 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 - **gpxmapper.models** — Dataclasses such as **TextConfig** (use this module in programmatic examples, not `gpxmapper.cli`).
 - **gpxmapper.geolocation_clients** — Nominatim-style clients and **GeolocationClientFactory** (registry pattern
 analogous to map renderers).
-- **`nominatim/`** (at repository root, not the Python package) — **`start_server.sh`** and **`start_server.bat`** (Windows) bring up local **Docker** Nominatim on port **8080** (default **`PBF_URL`** Hungary); **`verify_local_hungary.sh`** for **`/status`** and sample reverse checks. All three are **copied into the Windows release ZIP** next to `gpxmapper.exe`, with **`install/doc/USER_GUIDE.md`** shipped as **`doc/USER_GUIDE.md`**. Details under **Nominatim server and `NOMINATIM_SERVER`** below.
+- **`nominatim/`** (at repository root, not the Python package) — **`start_server.sh`** and **`start_server.bat`** (Windows) bring up local **Docker** Nominatim on port **8080** (default **`PBF_URL`** Hungary); **`verify_local_hungary.sh`** for **`/status`** and sample reverse checks. All three are **copied into the Windows release ZIP** next to `gpxmapper.exe`, with **`install/doc/USER_GUIDE.md`** shipped as **`doc/USER_GUIDE.md`** and **`install/doc/THIRD_PARTY_NOTICES.md`** as **`doc/THIRD_PARTY_NOTICES.md`**. Details under **Nominatim server and `NOMINATIM_SERVER`** below.
 
 ### `dist/` vs `install/` in this repository
 
 These names are easy to confuse with “installing” the app or with generic Python layout; here they mean something specific to this project:
 
 - **`dist/`** — **PyInstaller output** after **`python build_exe.py`**: the build writes **`dist/gpxmapper.exe`** (and transient build metadata elsewhere). Treat it as a **generated build artifact** (usually git-ignored), meaning “what the Windows exe build produced,” not “the folder where the user installed the program.”
-- **`install/`** — **Source files** in the repo aimed at **end users of the Windows ZIP** (not **`pip install`** targets). Today that is mainly **`install/doc/USER_GUIDE.md`**, which CI and **`scripts/package-windows-release.ps1`** copy into the bundle as **`doc/USER_GUIDE.md`**. It is **not** Python’s **`site-packages`**, **`/usr/local`**, or the directory where you unzip the release — see **`install/README.md`** for how paths map into the ZIP.
+- **`install/`** — **Source files** in the repo aimed at **end users of the Windows ZIP** (not **`pip install`** targets). That includes **`install/doc/USER_GUIDE.md`** and **`install/doc/THIRD_PARTY_NOTICES.md`**, which CI and **`scripts/package-windows-release.ps1`** copy into the bundle as **`doc/USER_GUIDE.md`** and **`doc/THIRD_PARTY_NOTICES.md`**. It is **not** Python’s **`site-packages`**, **`/usr/local`**, or the directory where you unzip the release — see **`install/README.md`** for how paths map into the ZIP.
 
 ### Map tile cache locations (default)
 
@@ -86,7 +86,7 @@ The wrappers set **`NO_MKDOCS_2_WARNING=1`** (Material for MkDocs — silences t
 
 For Windows users who don't want to install Python or any dependencies:
 
-1. Download the latest **release ZIP** from the [releases page](https://github.com/dzooli/gpxmapper/releases). Extract it to get **`gpxmapper-v{version}\`** with `gpxmapper.exe`, readme, license, Nominatim helper scripts, and **`doc\USER_GUIDE.md`**.
+1. Download the latest **release ZIP** from the [releases page](https://github.com/dzooli/gpxmapper/releases). Extract it to get **`gpxmapper-v{version}\`** with `gpxmapper.exe`, readme, license, Nominatim helper scripts, **`doc\USER_GUIDE.md`**, and **`doc\THIRD_PARTY_NOTICES.md`**.
 2. Unzip it into a folder of your choice (your **installation directory**).
 3. Open **Command Prompt** or **PowerShell**, `cd` into that folder, and run:
 
@@ -164,7 +164,7 @@ This is practical redistribution hygiene, not legal advice. If unsure, use a lic
 - **Your `LICENSE` (MIT)** covers **this project’s own source**. The **frozen `gpxmapper.exe`** also contains **Python wheels and native libraries** pulled in by PyInstaller (for example **OpenCV**, **NumPy**, **Pillow**, **Typer** / **Click**, **HTTP** stacks, and whatever those wheels ship on Windows — often **DLLs** you never import by name). Each component has its **own** license (MIT, BSD, Apache-2.0, etc.) with its **own** notice and copy requirements when you redistribute binaries.
 - **What to ship with the app:** a common pattern is a **`THIRD_PARTY_NOTICES`**, **`NOTICES.txt`**, or **`ThirdPartyLicenses.md`** file **next to the executable** in the Windows bundle (same folder as **`README.md`** / **`LICENSE`** today), listing **project name, version, SPDX identifier (if known), and full or linked license text** for every bundled dependency. Regenerate or re-check it when **`pyproject.toml` / `uv.lock`** changes. Tools that help collect Python-side metadata include **`pip-licenses`**, **`pipdeptree`**, or SBOM generators (e.g. **CycloneDX**-oriented flows); they do **not** automatically know every **native DLL** inside a wheel, so treat them as a starting point.
 - **OpenH264 specifically:** Some OpenCV / FFmpeg builds use **Cisco’s OpenH264** for H.264-related paths. **Whether your shipped exe actually contains OpenH264** depends on the **exact `opencv-python` wheel** and how video I/O is built — it is **not** implied solely by using **`fourcc('mp4v')`** in code. To see what OpenCV reports for a given build, run from the same environment (or a small script next to the frozen exe): **`python -c "import cv2; print(cv2.getBuildInformation())"`** and inspect the build log for FFmpeg / OpenH264. For the **onefile exe**, you can also inspect extracted runtime files under **`sys._MEIPASS`** while the app runs, or use a **PE/DLL inspection** tool on **`dist\gpxmapper.exe`** and bundled binaries. **If** OpenH264 (or any other third-party binary) is present, include the **copyright and license terms required by that project** (for OpenH264, Cisco’s published **BSD-like** terms and notices for the binary redistribution program).
-- **Keeping the bundle honest:** add your notices file to **`scripts/package-windows-release.ps1`** and **`.github/workflows/build.yml` / `release.yml`** alongside the other copied artifacts whenever you start maintaining **`THIRD_PARTY_NOTICES`** (or equivalent) in the repo.
+- **Keeping the bundle honest:** the repo ships **`install/doc/THIRD_PARTY_NOTICES.md`** (regenerate with **`python scripts/generate_third_party_notices.py`** when **`uv.lock`** changes). It is copied into the Windows bundle as **`doc/THIRD_PARTY_NOTICES.md`** alongside **`README.md`** / **`LICENSE`**.
 
 ## Usage
 

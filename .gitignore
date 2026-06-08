@@ -154,6 +154,8 @@ __pypackages__/
 *.avi
 *.ttf
 *.txt
+!install/doc/license-appendix/
+!install/doc/license-appendix/*.txt
 *.*dll
 
 

@@ -70,6 +70,6 @@ So `HTTPS://Localhost:8080/` and `https://localhost:8080` map to the same key bu
 
 ## Related documentation
 
-- **Local Nominatim:** `nominatim/start_server.sh`, **`nominatim/start_server.bat`** (Windows), `nominatim/verify_local_hungary.sh`. **Release ZIP:** those files plus **`doc/USER_GUIDE.md`** beside `gpxmapper.exe` — user guide source **`install/doc/USER_GUIDE.md`**. Operators: README + `docs/userdocs/index.md` + `docs/solutions/2026-06-nominatim-geolocate.md`.
+- **Local Nominatim:** `nominatim/start_server.sh`, **`nominatim/start_server.bat`** (Windows), `nominatim/verify_local_hungary.sh`. **Release ZIP:** those files plus **`doc/USER_GUIDE.md`** and **`doc/THIRD_PARTY_NOTICES.md`** beside `gpxmapper.exe` — user guide source **`install/doc/USER_GUIDE.md`**, notices **`install/doc/THIRD_PARTY_NOTICES.md`**. Operators: README + `docs/userdocs/index.md` + `docs/solutions/2026-06-nominatim-geolocate.md`.
 - Overlay string formatting: `docs/superpowers/plans/2026-06-07-geolocate-label-verbosity.md`
 - Original cache design notes: `docs/superpowers/plans/2026-06-07-reverse-geocode-sqlite-cache.md`
