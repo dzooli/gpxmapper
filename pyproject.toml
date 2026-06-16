@@ -17,9 +17,7 @@ description = "GPX to video mapper - creates videos from GPX tracks"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.12"
-authors = [
-    { name = "Zoltan Fabian", email = "zoltan.dzooli.fabian@gmail.com" },
-]
+authors = [{ name = "Zoltan Fabian", email = "zoltan.dzooli.fabian@gmail.com" }]
 keywords = [
     "gpx",
     "gps",
@@ -70,8 +68,8 @@ dev = [
     "pytest-cov>=4.1.0",
     "pytest-httpx>=0.35.0",
     "pytest-mock",
-    # Docs
-    "mkdocs>=1.6.0",
+    # Docs — mkdocs 1.x only until the ecosystem supports MkDocs 2 / alternatives; see scripts/build-docs.*
+    "mkdocs>=1.6,<2",
     "mkdocs-click==0.9.0",
     "mkdocs-exclude==1.0.2",
     "mkdocs-gen-files>=0.5.0",
@@ -83,6 +81,7 @@ dev = [
     "mkdocstrings>=0.25.0",
     "mkdocstrings-python>=1.10.0",
     "pymdown-extensions>=10.8",
+    "pip-licenses>=5.5.5",
 ]
 
 [tool.pyinstaller]
@@ -101,6 +100,11 @@ options = [
     "--hidden-import=zoneinfo",
     "--specpath=.",
 ]
+
+# Ruff (IDE extension / `ruff check` / `ruff format`). Line length applies to E501 and the formatter.
+# Flake8 does not read this table; use `.flake8` for max-line-length if Flake8 runs (see .vscode/settings.json).
+[tool.ruff]
+line-length = 120
 
 [tool.setuptools]
 package-dir = { "" = "src" }

@@ -154,9 +154,23 @@ __pypackages__/
 *.avi
 *.ttf
 *.txt
+!install/doc/license-appendix/
+!install/doc/license-appendix/*.txt
 *.*dll
 
 
 
 /coverage.lcov
 /site
+
+# Local Windows release ZIP staging (scripts/package-windows-release.ps1, CI bundle dir)
+release/
+gpxmapper-v*/
+gpxmapper-release.zip
+
+# MkDocs output (regenerate with scripts/build-docs.*)
+docs/build/
+scripts/licenses/
+
+.ruff_cache/
+.continue/

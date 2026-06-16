@@ -7,20 +7,44 @@ alwaysApply: true
 
 ## Relationship to other rules
 
-Coding and project context: **`gpxmapper-core.mdc`**, **`python-standards.mdc`**. This file is **git-only** (commits, branches, PRs).
+Coding and project context: **`gpxmapper-core.mdc`**, **`python-standards.mdc`**. This file is **git-only** (commits, branches, PRs) and is the **only** project rule for commit message format (no separate commit-message rule file).
 
 ## Commit message rules
 
-- Use the conventional commit format: `[<issue-number>] <type>(<scope>): <description>`
-- Determine the issue number from the branch name if possible (e.g. ticket key such as `GPXM-3` or `ABC-123`).
-- Issue number is mandatory
-- Scope: the affected module(s)
-- Types: feat, fix, docs, style, refactor, test, chore, perf
-- Keep the description concise (under 50 characters)
-- Use imperative mood (e.g., "add" not "added" or "adds")
-- Don't end with a period
-- Use lowercase for the first word unless it's a proper noun
-- Provide more details in the commit body, separated by a blank line
+Commits use a **Commitizen-friendly subject** (so `cz changelog` / `cz bump` can parse the first line) and carry the **Jira work item in the body**, which also matches how Jira scans commit messages for links.
+
+### Subject line (first line, mandatory)
+
+- **Conventional only:** `<type>(<scope>): <short summary>`
+- **Do not** put `[PROJ-123]` on the subject line — that breaks Commitizen’s default `commit_parser` / `changelog_pattern` (they expect `feat`, `fix`, … at the start).
+- `scope` is optional; `!` before `:` is allowed for breaking changes.
+- Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `build`, `ci`, `bump`, `revert` (see `scripts/check_commit_message.py`).
+
+Style: imperative mood, no period at the end of the subject, keep the summary concise.
+
+### Body (after one blank line, mandatory for normal commits)
+
+1. **Blank line** immediately after the subject (empty line — no spaces).
+2. **Issue line:** `[<KEY>-<number>]: <issue title>` — Jira-style key in **brackets**, then colon, space, and a short human-readable title (from Jira or aligned with the branch).
+3. **Details:** bullet list or short paragraphs describing what changed.
+
+Example:
+
+```text
+feat(geolocate): add sqlite-backed reverse geocode cache
+
+[GPXM-1]: Nominatim reverse geolocation for overlays
+- add cache module and CLI wiring
+- document env and local Docker helpers
+```
+
+### Tooling
+
+- **`pre-commit`** runs **`scripts/check_commit_message.py`** on the `commit-msg` stage (`uv run pre-commit install --hook-type commit-msg`).
+- **Commitizen** (same hook run) validates the subject with its default conventional rules; **`.cz.toml`** keeps normal `allowed_prefixes` (`Merge`, `Revert`, …) only — no ticket prefix on the subject.
+- Derive `<KEY>-<number>` from the branch when possible (e.g. `GPXM-1-nominatim-…` → `[GPXM-1]: …`).
+
+Exempt first lines (no body rules): `Merge `, `Revert `, `Pull request`, `fixup!`, `squash!`, `amend!`.
 
 ## Branch naming conventions
 

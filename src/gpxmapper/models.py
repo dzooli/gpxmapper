@@ -167,7 +167,12 @@ class MapTile:
 
 @dataclass(slots=True, frozen=True)
 class TextConfig:
-    """Configuration for text rendering in the video."""
+    """Configuration for text rendering in the video.
+
+    ``timestamp_color`` is the RGB tuple used for **all** overlay text (timestamp,
+    title, captions, scrolling text, and geolocation line). The CLI exposes it as
+    ``--text-color``; the field name is historical.
+    """
     font_scale: float = 0.7
     title_text: Optional[str] = None
     text_align: str = "left"
@@ -177,6 +182,7 @@ class TextConfig:
     scrolling_text_file: Optional[str] = None
     scrolling_speed: Optional[float] = None
     timezone: Optional[str] = None
+    geolocate: bool = False
 
 
 @dataclass(slots=True, frozen=True)

@@ -31,7 +31,7 @@ def cli_runner() -> CliRunner:
     return CliRunner()
 
 
-def _invoke(runner: CliRunner, args: list[str]) -> Result:
+def _invoke(runner: CliRunner, args: list[str], *, standalone_mode: bool = False) -> Result:
     """Invoke the Typer app in a way that works with Click's test runner.
 
     ``gpxmapper.cli`` calls ``basicConfig(StreamHandler(sys.stdout))`` at import
@@ -46,7 +46,7 @@ def _invoke(runner: CliRunner, args: list[str]) -> Result:
     root.handlers.clear()
     root.addHandler(logging.NullHandler())
     try:
-        return runner.invoke(app, args, standalone_mode=False)
+        return runner.invoke(app, args, standalone_mode=standalone_mode)
     finally:
         root.handlers.clear()
         for handler in saved_handlers:
@@ -112,6 +112,12 @@ def test_create_text_config_builds_dataclass():
     assert cfg.font_file == "/tmp/f.ttf"
     assert cfg.show_timestamp is False
     assert cfg.timezone == "Europe/Budapest"
+    assert cfg.geolocate is False
+
+
+def test_create_text_config_geolocate_true():
+    cfg = create_text_config(font_scale=1.0, geolocate=True)
+    assert cfg.geolocate is True
 
 
 def test_create_text_config_rejects_bad_alignment():
@@ -120,7 +126,7 @@ def test_create_text_config_rejects_bad_alignment():
 
 
 def test_create_text_config_rejects_bad_timestamp_color():
-    with pytest.raises(typer.BadParameter, match="Timestamp color"):
+    with pytest.raises(typer.BadParameter, match="Text overlay color"):
         create_text_config(font_scale=1.0, timestamp_color="300,0,0")
 
 
@@ -159,6 +165,22 @@ def test_app_help_lists_commands(cli_runner: CliRunner):
     assert "generate" in result.stdout
     assert "info" in result.stdout
     assert "clear-cache" in result.stdout
+    assert "check-nominatim" in result.stdout
+    assert "--log-level" in result.stdout
+
+
+def test_invalid_log_level(cli_runner: CliRunner, gpx_with_times: Path):
+    result = _invoke(cli_runner, ["--log-level", "NOT_A_LEVEL", "info", str(gpx_with_times)])
+    assert result.exit_code != 0
+    assert result.exception is not None
+    assert "Invalid --log-level" in str(result.exception)
+
+
+def test_apply_cli_log_level_rejects_unknown_name():
+    from gpxmapper.cli.log_level import apply_cli_log_level
+
+    with pytest.raises(ValueError, match="Invalid --log-level"):
+        apply_cli_log_level("NOT_A_LEVEL")
 
 
 def test_info_success(cli_runner: CliRunner, gpx_with_times: Path):
@@ -203,6 +225,53 @@ def test_generate_aborts_on_bad_marker_color(
         ["generate", str(gpx_with_times), "--marker-color", "notrgb"],
     )
     assert result.exit_code != 0
+
+
+def test_generate_aborts_on_bad_text_color(
+        cli_runner: CliRunner, gpx_with_times: Path
+):
+    result = _invoke(
+        cli_runner,
+        ["generate", str(gpx_with_times), "--text-color", "notrgb"],
+    )
+    assert result.exit_code != 0
+
+
+def test_generate_passes_text_color_to_video_config(
+        cli_runner: CliRunner, gpx_with_times: Path, mocker
+):
+    mock_gen = mocker.patch(
+        "gpxmapper.cli.generate.generate_video", return_value=str(gpx_with_times.with_suffix(".mp4"))
+    )
+    result = _invoke(
+        cli_runner,
+        ["generate", str(gpx_with_times), "--text-color", "10, 20, 30"],
+    )
+    assert result.exit_code == 0
+    text_cfg = mock_gen.call_args.kwargs["text_config"]
+    assert text_cfg.timestamp_color == (10, 20, 30)
+
+
+def test_generate_geolocate_conflicts_with_scrolling_text(
+        cli_runner: CliRunner, gpx_with_times: Path, tmp_path: Path
+):
+    scroll = tmp_path / "scroll.txt"
+    scroll.write_text("hello", encoding="utf-8")
+    result = _invoke(
+        cli_runner,
+        [
+            "generate",
+            str(gpx_with_times),
+            "--geolocate",
+            "--scrolling-text",
+            str(scroll),
+        ],
+        standalone_mode=True,
+    )
+    assert result.exit_code != 0
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "--geolocate" in combined
+    assert "scrolling" in combined.lower()
 
 
 def test_generate_aborts_when_generate_video_fails(
@@ -285,3 +354,52 @@ def test_clear_cache_deletes_files_when_confirmed(
     assert result.exit_code == 0
     assert "Successfully cleared" in result.stdout
     assert not stale.exists()
+
+
+def test_clear_geolocation_cache_when_file_missing(cli_runner: CliRunner, tmp_path: Path, mocker):
+    missing = tmp_path / "no_db.sqlite"
+    mocker.patch(
+        "gpxmapper.cli.clear_cache.resolve_reverse_geocode_cache_path",
+        return_value=missing,
+    )
+
+    result = _invoke(cli_runner, ["clear-cache", "--geolocation"])
+
+    assert result.exit_code == 0
+    assert "does not exist" in result.stdout
+
+
+def test_clear_geolocation_cache_cancelled_when_not_confirmed(
+        cli_runner: CliRunner, tmp_path: Path, mocker
+):
+    db = tmp_path / "reverse_geocode.sqlite"
+    db.write_bytes(b"x")
+    mocker.patch(
+        "gpxmapper.cli.clear_cache.resolve_reverse_geocode_cache_path",
+        return_value=db,
+    )
+    mocker.patch("gpxmapper.cli.clear_cache.typer.confirm", return_value=False)
+
+    result = _invoke(cli_runner, ["clear-cache", "--geolocation"])
+
+    assert result.exit_code == 0
+    assert "cancelled" in result.stdout
+    assert db.is_file()
+
+
+def test_clear_geolocation_cache_deletes_file_when_confirmed(
+        cli_runner: CliRunner, tmp_path: Path, mocker
+):
+    db = tmp_path / "reverse_geocode.sqlite"
+    db.write_bytes(b"x")
+    mocker.patch(
+        "gpxmapper.cli.clear_cache.resolve_reverse_geocode_cache_path",
+        return_value=db,
+    )
+    mocker.patch("gpxmapper.cli.clear_cache.typer.confirm", return_value=True)
+
+    result = _invoke(cli_runner, ["clear-cache", "--geolocation"])
+
+    assert result.exit_code == 0
+    assert "Successfully deleted reverse geocode cache" in result.stdout
+    assert not db.exists()

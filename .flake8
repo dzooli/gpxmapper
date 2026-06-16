@@ -1,0 +1,5 @@
+# Flake8 only reads .flake8, setup.cfg, or tox.ini — not [tool.ruff] / [tool.flake8] in pyproject.toml.
+# This repo lints with Ruff; this file aligns line length if Flake8 (or the VS Code legacy
+# python.linting flake8 bridge) is still enabled.
+[flake8]
+max-line-length = 120

@@ -12,13 +12,14 @@ from . import app
 
 logger = logging.getLogger(__name__)
 
+
 @app.command()
 def generate(
     gpx_file: Path = typer.Argument(
-        ..., 
-        exists=True, 
-        file_okay=True, 
-        dir_okay=False, 
+        ...,
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
         readable=True,
         help="Path to the input GPX file"
     ),
@@ -69,6 +70,11 @@ def generate(
         "255,0,0",
         "--marker-color", "-c",
         help="Color of the position marker as R,G,B (e.g., '255,0,0' for red)"
+    ),
+    text_color: str = typer.Option(
+        "0,0,0",
+        "--text-color", "-tc",
+        help="R,G,B color for all text overlays (timestamp, title, captions, scrolling, geolocation), 0-255 per channel (default 0,0,0 black).",
     ),
     # Text rendering options
     font_scale: float = typer.Option(
@@ -126,6 +132,11 @@ def generate(
         min=0.1,
         help="Speed at which the text scrolls across the video (pixels per frame). If not specified, speed will be calculated based on video duration."
     ),
+    geolocate: bool = typer.Option(
+        False,
+        "--geolocate",
+        help="Show reverse-geocoded addresses (Nominatim) instead of scrolling text. Conflicts with --scrolling-text / --scrolling-speed.",
+    ),
     timezone: Optional[str] = typer.Option(
         None,
         "--timezone", "-tz",
@@ -139,8 +150,15 @@ def generate(
     The GPX timeline will be mapped to the video duration.
     """
     try:
-        # Parse marker color
+        # Parse marker and text overlay colors (same R,G,B format as --marker-color)
         marker_color_tuple = parse_color(marker_color)
+        text_color_tuple = parse_color(text_color)
+
+        if geolocate and (scrolling_text is not None or scrolling_speed is not None):
+            raise typer.BadParameter(
+                "--geolocate cannot be used together with --scrolling-text (-st) or --scrolling-speed (-ss). "
+                "Omit scrolling options when using reverse geolocation."
+            )
 
         # Set default output file if not provided
         if output_file is None:
@@ -156,11 +174,13 @@ def generate(
             font_scale=font_scale,
             title_text=title_text,
             text_align=text_align,
+            timestamp_color=f"{text_color_tuple[0]},{text_color_tuple[1]},{text_color_tuple[2]}",
             font_file=str(font_file) if font_file else None,
             no_timestamp=no_timestamp,
             scrolling_text_file=str(scrolling_text) if scrolling_text else None,
             scrolling_speed=scrolling_speed,
-            timezone=timezone
+            timezone=timezone,
+            geolocate=geolocate,
         )
 
         video_config = VideoConfig(
@@ -188,6 +208,10 @@ def generate(
 
         logger.info(f"Video generated successfully: {output_path}")
 
-    except Exception as e:
-        logger.error(f"Error generating video: {e}")
+    except typer.BadParameter:
+        raise
+    except typer.Abort:
+        raise
+    except Exception:
+        logger.exception("Error generating video")
         raise typer.Abort()

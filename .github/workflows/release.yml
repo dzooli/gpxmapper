@@ -49,22 +49,33 @@ jobs:
 
     - name: Create release zip
       run: |
-        $releaseDir = "release"
-        New-Item -ItemType Directory -Path $releaseDir -Force
-        Copy-Item "dist\gpxmapper.exe" -Destination "$releaseDir\"
-        Copy-Item "README.md" -Destination "$releaseDir\"
-        Copy-Item "LICENSE" -Destination "$releaseDir\"
-        Copy-Item "CHANGELOG.md" -Destination "$releaseDir\"
-        $zipName = "gpxmapper-v${{ steps.cz.outputs.version }}.zip"
-        Compress-Archive -Path "$releaseDir\*" -DestinationPath $zipName
+        $version = "${{ steps.cz.outputs.version }}"
+        $root = "release"
+        if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force }
+        $bundleDir = "$root\gpxmapper-v$version"
+        New-Item -ItemType Directory -Path "$bundleDir\doc" -Force | Out-Null
+        Copy-Item "dist\gpxmapper.exe" -Destination "$bundleDir\"
+        Copy-Item "README.md" -Destination "$bundleDir\"
+        Copy-Item "LICENSE" -Destination "$bundleDir\"
+        Copy-Item "CHANGELOG.md" -Destination "$bundleDir\"
+        Copy-Item "nominatim\start_server.sh" -Destination "$bundleDir\"
+        Copy-Item "nominatim\verify_local_hungary.sh" -Destination "$bundleDir\"
+        Copy-Item "nominatim\start_server.bat" -Destination "$bundleDir\"
+        Copy-Item "install\doc\USER_GUIDE.md" -Destination "$bundleDir\doc\"
+        Copy-Item "install\doc\THIRD_PARTY_NOTICES.md" -Destination "$bundleDir\doc\"
+        $zipName = "gpxmapper-v$version.zip"
+        # Zip release\gpxmapper-v{version} so archive root is gpxmapper-v{version}/
+        Compress-Archive -LiteralPath $bundleDir -DestinationPath $zipName
         echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
       shell: pwsh
 
-    - name: Upload release zip as artifact
+    # Same layout as build.yml: release/ contains only gpxmapper-v{version}/; path release/
+    # uploads that folder as the artifact root. GitHub Release attaches the zip above.
+    - name: Upload release bundle folder as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: release-zip
-        path: ${{ env.ZIP_NAME }}
+        name: windows-release-bundle
+        path: release/
         retention-days: 1
 
     - name: Create GitHub Release

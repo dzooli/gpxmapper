@@ -12,9 +12,9 @@ CLI tool (**Typer**, `gpxmapper`) that builds a short video from a GPX track: Op
 ## Tooling (prefer running commands, not only suggesting them)
 
 - **Env:** `uv`; dev deps in `[dependency-groups] dev`; virtualenv **`.venv`**
-- **Lint/format:** `ruff`
+- **Lint/format:** `ruff` (`[tool.ruff]` in `pyproject.toml`). Do not rely on VS Code’s legacy **Flake8** linter for the same rules — workspace disables it; Flake8 CLI does not read `pyproject.toml` for line length (use `.flake8` if you run Flake8).
 - **Tests:** `pytest`, `pytest-cov`, `pytest-asyncio`, `pytest-httpx`, `pytest-mock` — `pytest.ini`, `tests/conftest.py`
-- **Docs:** **mkdocs** — `docs/userdocs`, `docs/devdocs`, build `docs/build/`
+- **Docs:** **MkDocs 1.x** (`mkdocs>=1.6,<2` in dev deps — avoids accidental MkDocs 2 installs). Build with **`scripts/build-docs.ps1`** / **`scripts/build-docs.sh`** (sets `NO_MKDOCS_2_WARNING=1` and `DISABLE_MKDOCS_2_WARNING=true`) or export those then `uv run mkdocs build` — sources `docs/userdocs`, output `docs/build/`
 - **CI / quality:** GitHub Actions, SonarCloud
 
 Run: `uv run pytest` (coverage roots: `src/gpxmapper` per `pytest.ini`).
@@ -29,15 +29,16 @@ Run: `uv run pytest` (coverage roots: `src/gpxmapper` per `pytest.ini`).
 
 | Area | Notes |
 |------|--------|
-| `cli/` | Typer app: `generate`, `info`, `clear-cache` |
+| `cli/` | Typer app: `generate`, `info`, `clear-cache`, `check-nominatim`; global **`--log-level`** (default INFO) via `cli/log_level.py` |
 | `gpx_parser.py` | GPX → track points |
 | `map_renderer/` | `MapRendererBase` (ABC, cache path + geometry + rendering). `MapRenderer` (sync, `requests` + threads). `MapRendererAsync` (`httpx`). `MapRendererFactory`: `register_renderer` / `create_renderer`; kinds `sync` \| `async` registered from `map_renderer/__init__.py`. Default cache: `MapRendererBase.resolve_default_cache_directory()` / `resolve_cache_directory()` |
 | `video_generator.py` | Frames, OpenCV writer; uses `MapRendererFactory.create(MapRendererKind.ASYNC)` for tiles |
 | `font_manager.py` | PIL / TTF text |
 | `models.py` | e.g. **`TextConfig`** — import here in library/examples, **not** from `cli` |
 | `geolocation_clients/` | `AbstractGeolocationClient`, `GeolocationClientFactory`, Nominatim clients (registry pattern like map renderers) |
+| **`nominatim_config` / `geolocation_overlay` / `geolocation_label_format` / `reverse_geocode_cache`** | **`NOMINATIM_SERVER`**, `/status` probe (3 tries), **`--geolocate`** prefetch + short overlay labels + SQLite disk cache — see **`docs/solutions/2026-06-nominatim-geolocate.md`**, **`docs/superpowers/plans/2026-06-07-nominatim-geolocate-cli.md`**, **`docs/superpowers/plans/2026-06-07-reverse-geocode-sqlite-cache.md`**, **`docs/superpowers/plans/2026-06-07-geolocate-label-verbosity.md`** |
 
-**`clear-cache`:** uses `MapRendererBase.resolve_default_cache_directory()` (no renderer instance; path matches all backends).
+**`clear-cache`:** default clears tiles via `MapRendererBase.resolve_default_cache_directory()` (no renderer instance; path matches all backends). **`--geolocation`** deletes the reverse-geocode SQLite file from `reverse_geocode_cache.resolve_reverse_geocode_cache_path()` after confirmation.
 
 ## Tests (current focus)
 
@@ -70,6 +71,6 @@ End-user and troubleshooting detail: **README.md**, **docs/**.
 ## Other Cursor rules in this repo
 
 - **`python-standards.mdc`** — Python (`**/*.py`)
-- **`git-github-workflow.mdc`** — commits, branches, PRs (GitHub)
+- **`git-github-workflow.mdc`** — commits, branches, PRs (GitHub). Commit **subject** is conventional `type(scope):` only; **body** after a blank line starts with `[KEY-n]: title` (enforced by `scripts/check_commit_message.py` on pre-commit `commit-msg`) so Commitizen changelog parsing still works.
 
 Together with this file, they form the **canonical Cursor rule set** for automation.

@@ -43,7 +43,7 @@ plugins:
       scripts:
         - docs/gen_api.py
   - literate-nav:
-      nav_file: reference/SUMMARY.md
+      nav_file: SUMMARY.md
   - section-index
 
 markdown_extensions:
@@ -57,10 +57,10 @@ markdown_extensions:
   - pymdownx.details
   - pymdownx.superfences
   - pymdownx.highlight
-  - pymdownx.snippets
+  - pymdownx.snippets:
+      base_path:
+        - .
   - pymdownx.tabbed
   - pymdownx.emoji
 
-nav:
-  - Home: index.md
-  - Reference: reference/
+# Nav: `docs/userdocs/SUMMARY.md` (literate-nav). Includes generated `reference/SUMMARY.md` from `docs/gen_api.py`.

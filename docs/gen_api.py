@@ -31,7 +31,8 @@ for path in sorted((PACKAGE_ROOT / PACKAGE_IMPORT).rglob("*.py")):
     doc_path = Path("reference", *parts).with_suffix(".md")
     nav_path = parts
 
-    nav[nav_path] = doc_path.as_posix()
+    # Paths in reference/SUMMARY.md must be relative to reference/ (root SUMMARY uses [Reference](reference/)).
+    nav[nav_path] = Path(*parts).with_suffix(".md").as_posix()
 
     with gen_files.open(doc_path, "w") as fd:
         # Root heading for the module
