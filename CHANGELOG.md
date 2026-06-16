@@ -1,12 +1,12 @@
-## Unreleased
+## 0.3.0 (2026-06-16)
 
 ### Feat
 
-- Reverse geocode for video overlays (`--geolocate`): Nominatim-backed short labels and SQLite-backed cache (see `clear-cache --geolocation`).
-- Add `--text-color` / `-tc` to `gpxmapper generate` for R,G,B text overlay color (same format as `--marker-color`).
-- Windows build/release ZIPs include `start_server.bat`, `start_server.sh`, `verify_local_hungary.sh`, and `doc/USER_GUIDE.md` next to `gpxmapper.exe`.
-- Add `scripts/package-windows-release.ps1` to build the same ZIP locally after `build_exe.py`.
-- Pin MkDocs to 1.x (`mkdocs>=1.6,<2`); add `scripts/build-docs.{ps1,sh}` with `NO_MKDOCS_2_WARNING` / `DISABLE_MKDOCS_2_WARNING` to silence Material / pymdownx MkDocs 2.0 notices.
+- **geolocation**: Reverse geocode using Nominatim with local cache
+
+### Fix
+
+- **ci**: keep gpxmapper-v{version} root in artifacts and release zip
 
 ## 0.2.0 (2025-05-24)
 

@@ -1,5 +1,5 @@
 [tool.commitizen]
-version = "0.2.0"
+version = "0.3.0"
 name = "cz_conventional_commits"
 # Pre-commit commitizen hook: skip strict conventional check for these subject prefixes
 # (see defaults in commitizen). Subjects are plain conventional; Jira key lives in body.
