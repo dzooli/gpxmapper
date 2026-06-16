@@ -614,3 +614,6 @@ uv sync
 
 [See LICENSE](./LICENSE)
 
+## Contribution
+
+One needs to clone the repository and create a separate branch reflecting the feature/fix under implementation. The tested and approved changes has to be merged into the main branch by opening a pull-request. The repository owner keeps the responsibility to prioritize and approve PRs.
