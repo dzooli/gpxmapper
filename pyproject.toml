@@ -80,7 +80,7 @@ dev = [
     "mkdocs-typer2==0.1.5",
     "mkdocstrings>=0.25.0",
     "mkdocstrings-python>=1.10.0",
-    "pymdown-extensions>=10.8",
+    "pymdown-extensions>=10.21.3",
     "pip-licenses>=5.5.5",
 ]
 
