@@ -68,6 +68,8 @@ dev = [
     "pytest-cov>=4.1.0",
     "pytest-httpx>=0.35.0",
     "pytest-mock",
+    # Type checking
+    "pyrefly>=0.60.0",
     # Docs — mkdocs 1.x only until the ecosystem supports MkDocs 2 / alternatives; see scripts/build-docs.*
     "mkdocs>=1.6,<2",
     "mkdocs-click==0.9.0",
