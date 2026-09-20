@@ -22,8 +22,8 @@ except ImportError:
             print("Continuing without TOML parsing support.")
             tomli = None
 
-SPECFILE = 'gpxmapper.spec'
-SPECPATH_OPT = '--specpath=.'
+SPECFILE = "gpxmapper.spec"
+SPECPATH_OPT = "--specpath=."
 
 
 def main():
@@ -81,18 +81,20 @@ def get_pyinstaller_command(config):
     if config and "options" in config:
         cmd.extend(config["options"])
     else:
-        cmd.extend([
-            "--name=gpxmapper",
-            "--onefile",
-            "--console",
-            "--hidden-import=gpxpy",
-            "--hidden-import=typer",
-            "--hidden-import=cv2",
-            "--hidden-import=requests",
-            "--hidden-import=PIL",
-            "--hidden-import=numpy",
-            SPECPATH_OPT,
-        ])
+        cmd.extend(
+            [
+                "--name=gpxmapper",
+                "--onefile",
+                "--console",
+                "--hidden-import=gpxpy",
+                "--hidden-import=typer",
+                "--hidden-import=cv2",
+                "--hidden-import=requests",
+                "--hidden-import=PIL",
+                "--hidden-import=numpy",
+                SPECPATH_OPT,
+            ]
+        )
 
     # Add LICENSE file if exists
     if Path("LICENSE").exists():

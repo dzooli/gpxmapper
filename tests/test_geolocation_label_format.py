@@ -81,10 +81,7 @@ def test_poi_when_no_street() -> None:
 
 
 def test_fallback_first_comma_segments_when_no_address() -> None:
-    long_dn = (
-        "Building A, Example Street 99, Neighbourhood, "
-        "Big City, Large Region, Country, Earth"
-    )
+    long_dn = "Building A, Example Street 99, Neighbourhood, Big City, Large Region, Country, Earth"
     r = _resp(display_name=long_dn, address={})
     out = format_geolocation_overlay_label(r)
     assert "Building A" in out

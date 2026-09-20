@@ -59,6 +59,7 @@ gpxmapper = "gpxmapper.cli:app"
 dev = [
     # Release & repo hygiene
     "commitizen>=4.7.0",
+    "poethepoet>=0.29.0",
     "pre-commit>=4.2.0",
     "pyinstaller>=6.0.0",
     "tomli>=2.2.1",
@@ -119,3 +120,14 @@ where = ["src"]
 # Then drop this [tool.uv.sources] entry and set e.g. pytest>=9.0.3 in dev dependencies.
 [tool.uv.sources]
 pytest = { git = "https://github.com/pytest-dev/pytest.git", rev = "76a9dd01e33162c54d6824f705e0f9eb2e24228a" }
+
+[tool.poe.tasks]
+test = "pytest"
+test-cov = "pytest --cov=gpxmapper"
+lint = "ruff check ."
+lint-fix = "ruff check --fix ."
+format = "ruff format ."
+format-check = "ruff format --check ."
+check = ["lint", "format-check", "test"]
+build-exe = "python build_exe.py"
+docs = "mkdocs build"

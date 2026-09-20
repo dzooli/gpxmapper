@@ -5,6 +5,7 @@ See .cursor/rules/git-github-workflow.mdc. Invoked by pre-commit (commit-msg sta
 Subject line must match Commitizen / changelog parsers (type(scope): summary).
 Body must start after a blank line with ``[PROJ-123]: Issue title`` then details.
 """
+
 from __future__ import annotations
 
 import re
@@ -86,9 +87,7 @@ def main() -> int:
     body_lines = [ln.strip() for ln in body.splitlines() if ln.strip()]
     if not body_lines:
         print(
-            "Commit body is empty. After the blank line, add:\n"
-            "  [<KEY>-<number>]: <issue title>\n"
-            "  - change bullets…",
+            "Commit body is empty. After the blank line, add:\n  [<KEY>-<number>]: <issue title>\n  - change bullets…",
             file=sys.stderr,
         )
         return 1

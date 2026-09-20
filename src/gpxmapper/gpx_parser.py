@@ -39,7 +39,7 @@ class GPXParser:
 
         # Simple conversion - if needed, implement more sophisticated parsing
         for i, ext in enumerate(extensions):
-            extensions_dict[f'extension_{i}'] = ext
+            extensions_dict[f"extension_{i}"] = ext
 
         return extensions_dict
 
@@ -59,7 +59,7 @@ class GPXParser:
             longitude=point.longitude,
             elevation=point.elevation,
             time=point.time,
-            extensions=extensions_dict
+            extensions=extensions_dict,
         )
 
     def _process_gpx_data(self, gpx):
@@ -85,7 +85,7 @@ class GPXParser:
             ValueError: If the GPX file is invalid
         """
         try:
-            with open(self.gpx_file_path, 'r') as gpx_file:
+            with open(self.gpx_file_path, "r") as gpx_file:
                 gpx = gpxpy.parse(gpx_file)
                 self._process_gpx_data(gpx)
 

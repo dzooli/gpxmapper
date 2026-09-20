@@ -38,12 +38,12 @@ class FontManager:
             logger.error(f"Failed to load custom font {font_file}: {e}")
             return None
 
-    def render_text(self, frame: np.ndarray, text: str, position: Tuple[int, int],
-                    color: Tuple[int, int, int], thickness: int = 2) -> np.ndarray:
+    def render_text(
+        self, frame: np.ndarray, text: str, position: Tuple[int, int], color: Tuple[int, int, int], thickness: int = 2
+    ) -> np.ndarray:
         """Render text on a frame using either PIL or OpenCV."""
         if not self.pil_font:
-            cv2.putText(frame, text, position, self.cv2_font, self.font_scale,
-                        color, thickness)
+            cv2.putText(frame, text, position, self.cv2_font, self.font_scale, color, thickness)
             return frame
 
         pil_img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))

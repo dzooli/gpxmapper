@@ -15,8 +15,7 @@ from gpxmapper.cli.utils import create_text_config, generate_video, parse_color
 from gpxmapper.models import MapConfig, VideoConfig
 
 GPX_HEADER = (
-    '<?xml version="1.0" encoding="UTF-8"?>'
-    '<gpx version="1.1" creator="test" xmlns="http://www.topografix.com/GPX/1/1">'
+    '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="test" xmlns="http://www.topografix.com/GPX/1/1">'
 )
 GPX_FOOTER = "</gpx>"
 
@@ -142,9 +141,7 @@ def test_generate_video_aborts_when_no_points(gpx_empty_track: Path, tmp_path: P
         )
 
 
-def test_generate_video_aborts_when_no_timestamps(
-        gpx_no_times: Path, tmp_path: Path
-):
+def test_generate_video_aborts_when_no_timestamps(gpx_no_times: Path, tmp_path: Path):
     out = tmp_path / "out.mp4"
     with pytest.raises(typer.Abort):
         generate_video(
@@ -203,9 +200,7 @@ def test_info_no_time_data_message(cli_runner: CliRunner, gpx_no_times: Path):
     assert "Number of track points: 1" in result.stdout
 
 
-def test_generate_success_mocked_video(
-        cli_runner: CliRunner, gpx_with_times: Path, mocker
-):
+def test_generate_success_mocked_video(cli_runner: CliRunner, gpx_with_times: Path, mocker):
     mock_gen = mocker.patch(
         "gpxmapper.cli.generate.generate_video", return_value=str(gpx_with_times.with_suffix(".mp4"))
     )
@@ -217,9 +212,7 @@ def test_generate_success_mocked_video(
     assert mock_gen.call_args.kwargs["gpx_file"] == gpx_with_times
 
 
-def test_generate_aborts_on_bad_marker_color(
-        cli_runner: CliRunner, gpx_with_times: Path
-):
+def test_generate_aborts_on_bad_marker_color(cli_runner: CliRunner, gpx_with_times: Path):
     result = _invoke(
         cli_runner,
         ["generate", str(gpx_with_times), "--marker-color", "notrgb"],
@@ -227,9 +220,7 @@ def test_generate_aborts_on_bad_marker_color(
     assert result.exit_code != 0
 
 
-def test_generate_aborts_on_bad_text_color(
-        cli_runner: CliRunner, gpx_with_times: Path
-):
+def test_generate_aborts_on_bad_text_color(cli_runner: CliRunner, gpx_with_times: Path):
     result = _invoke(
         cli_runner,
         ["generate", str(gpx_with_times), "--text-color", "notrgb"],
@@ -237,9 +228,7 @@ def test_generate_aborts_on_bad_text_color(
     assert result.exit_code != 0
 
 
-def test_generate_passes_text_color_to_video_config(
-        cli_runner: CliRunner, gpx_with_times: Path, mocker
-):
+def test_generate_passes_text_color_to_video_config(cli_runner: CliRunner, gpx_with_times: Path, mocker):
     mock_gen = mocker.patch(
         "gpxmapper.cli.generate.generate_video", return_value=str(gpx_with_times.with_suffix(".mp4"))
     )
@@ -252,9 +241,7 @@ def test_generate_passes_text_color_to_video_config(
     assert text_cfg.timestamp_color == (10, 20, 30)
 
 
-def test_generate_geolocate_conflicts_with_scrolling_text(
-        cli_runner: CliRunner, gpx_with_times: Path, tmp_path: Path
-):
+def test_generate_geolocate_conflicts_with_scrolling_text(cli_runner: CliRunner, gpx_with_times: Path, tmp_path: Path):
     scroll = tmp_path / "scroll.txt"
     scroll.write_text("hello", encoding="utf-8")
     result = _invoke(
@@ -274,9 +261,7 @@ def test_generate_geolocate_conflicts_with_scrolling_text(
     assert "scrolling" in combined.lower()
 
 
-def test_generate_aborts_when_generate_video_fails(
-        cli_runner: CliRunner, gpx_with_times: Path, mocker
-):
+def test_generate_aborts_when_generate_video_fails(cli_runner: CliRunner, gpx_with_times: Path, mocker):
     mocker.patch(
         "gpxmapper.cli.generate.generate_video",
         side_effect=RuntimeError("encode failed"),
@@ -314,9 +299,7 @@ def test_clear_cache_when_already_empty(cli_runner: CliRunner, tmp_path: Path, m
     assert "already empty" in result.stdout
 
 
-def test_clear_cache_cancelled_when_not_confirmed(
-        cli_runner: CliRunner, tmp_path: Path, mocker
-):
+def test_clear_cache_cancelled_when_not_confirmed(cli_runner: CliRunner, tmp_path: Path, mocker):
     cache = tmp_path / "cache"
     cache.mkdir()
     stale = cache / "tile.png"
@@ -335,9 +318,7 @@ def test_clear_cache_cancelled_when_not_confirmed(
     assert stale.is_file()
 
 
-def test_clear_cache_deletes_files_when_confirmed(
-        cli_runner: CliRunner, tmp_path: Path, mocker
-):
+def test_clear_cache_deletes_files_when_confirmed(cli_runner: CliRunner, tmp_path: Path, mocker):
     cache = tmp_path / "cache"
     cache.mkdir()
     stale = cache / "tile.png"
@@ -369,9 +350,7 @@ def test_clear_geolocation_cache_when_file_missing(cli_runner: CliRunner, tmp_pa
     assert "does not exist" in result.stdout
 
 
-def test_clear_geolocation_cache_cancelled_when_not_confirmed(
-        cli_runner: CliRunner, tmp_path: Path, mocker
-):
+def test_clear_geolocation_cache_cancelled_when_not_confirmed(cli_runner: CliRunner, tmp_path: Path, mocker):
     db = tmp_path / "reverse_geocode.sqlite"
     db.write_bytes(b"x")
     mocker.patch(
@@ -387,9 +366,7 @@ def test_clear_geolocation_cache_cancelled_when_not_confirmed(
     assert db.is_file()
 
 
-def test_clear_geolocation_cache_deletes_file_when_confirmed(
-        cli_runner: CliRunner, tmp_path: Path, mocker
-):
+def test_clear_geolocation_cache_deletes_file_when_confirmed(cli_runner: CliRunner, tmp_path: Path, mocker):
     db = tmp_path / "reverse_geocode.sqlite"
     db.write_bytes(b"x")
     mocker.patch(

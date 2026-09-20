@@ -19,9 +19,7 @@ def apply_cli_log_level(log_level: str) -> None:
     """
     name = log_level.strip().upper()
     if name not in _VALID:
-        raise ValueError(
-            f"Invalid --log-level {log_level!r}; use one of: {', '.join(sorted(_VALID))}."
-        )
+        raise ValueError(f"Invalid --log-level {log_level!r}; use one of: {', '.join(sorted(_VALID))}.")
     level = getattr(logging, name)
 
     root = logging.getLogger()

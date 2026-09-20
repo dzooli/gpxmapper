@@ -15,9 +15,7 @@ from gpxmapper.geolocation_clients import (
 
 @pytest_asyncio.fixture
 async def client():
-    async with AsyncNominatimClient(
-        base_url="https://test-nominatim.org", user_agent="test-agent"
-    ) as c:
+    async with AsyncNominatimClient(base_url="https://test-nominatim.org", user_agent="test-agent") as c:
         yield c
 
 

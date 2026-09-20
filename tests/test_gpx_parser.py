@@ -12,8 +12,7 @@ from gpxmapper.gpx_parser import GPXParser
 from gpxmapper.models import GPXTrackPoint
 
 GPX_HEADER = (
-    '<?xml version="1.0" encoding="UTF-8"?>'
-    '<gpx version="1.1" creator="test" xmlns="http://www.topografix.com/GPX/1/1">'
+    '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="test" xmlns="http://www.topografix.com/GPX/1/1">'
 )
 GPX_FOOTER = "</gpx>"
 

@@ -30,10 +30,21 @@ logger = logging.getLogger(__name__)
 class VideoCaptioner:
     """Handles text rendering on video frames."""
 
-    def __init__(self, width: int, height: int, timestamp_color: Tuple[int, int, int] = (0,0,0),
-                 font_scale: float = 0.7, title_text: str = "", text_align: str = "left",
-                 captions_file: str = "", font_file: str = "", show_timestamp: bool = True,
-                 scrolling_text_file: str = None, scrolling_speed: float = None, timezone: str = None):
+    def __init__(
+        self,
+        width: int,
+        height: int,
+        timestamp_color: Tuple[int, int, int] = (0, 0, 0),
+        font_scale: float = 0.7,
+        title_text: str = "",
+        text_align: str = "left",
+        captions_file: str = "",
+        font_file: str = "",
+        show_timestamp: bool = True,
+        scrolling_text_file: str = None,
+        scrolling_speed: float = None,
+        timezone: str = None,
+    ):
         """Initialize the video captioner.
 
         Args:
@@ -116,10 +127,7 @@ class VideoCaptioner:
 
         timestamp_str = display_timestamp.strftime("%Y-%m-%d %H:%M:%S")
         # Use font manager to render text
-        return self.font_manager.render_text(
-            frame, timestamp_str, (10, self.height - 20),
-            self.timestamp_color, 2
-        )
+        return self.font_manager.render_text(frame, timestamp_str, (10, self.height - 20), self.timestamp_color, 2)
 
     def set_video_start_time(self, start_time: datetime) -> None:
         """Set the start time of the video.
@@ -158,16 +166,18 @@ class VideoCaptioner:
             scrolling_text_file: Path to the text file containing scrolling text
         """
         try:
-            with open(scrolling_text_file, 'r', encoding='utf-8') as f:
+            with open(scrolling_text_file, "r", encoding="utf-8") as f:
                 # Read the entire file content and replace newlines with spaces
-                self.scrolling_text = ' '.join(line.strip() for line in f)
+                self.scrolling_text = " ".join(line.strip() for line in f)
 
                 # Calculate the width of the text
                 thickness = 2
                 (text_width, _), _ = self.font_manager.get_text_size(self.scrolling_text, thickness)
                 self.scrolling_text_width = text_width
 
-                logger.info(f"Loaded scrolling text from {scrolling_text_file} ({len(self.scrolling_text)} characters, {text_width} pixels wide)")
+                logger.info(
+                    f"Loaded scrolling text from {scrolling_text_file} ({len(self.scrolling_text)} characters, {text_width} pixels wide)"
+                )
         except Exception as e:
             logger.error(f"Error loading scrolling text file: {e}")
             self.scrolling_text = ""
@@ -183,7 +193,7 @@ class VideoCaptioner:
             captions_file: Path to the CSV file containing captions
         """
         try:
-            with open(captions_file, 'r', encoding='utf-8') as f:
+            with open(captions_file, "r", encoding="utf-8") as f:
                 reader = csv.reader(f)
                 # Skip the header row
                 next(reader, None)
@@ -194,7 +204,7 @@ class VideoCaptioner:
 
                         # Parse timestamp in HH:MM:SS format
                         try:
-                            h, m, s = map(int, timestamp_str.split(':'))
+                            h, m, s = map(int, timestamp_str.split(":"))
                             # Store as total seconds for easy comparison
                             total_seconds = h * 3600 + m * 60 + s
                             self.captions[total_seconds] = caption_text
@@ -206,7 +216,7 @@ class VideoCaptioner:
         except Exception as e:
             logger.error(f"Error loading captions file: {e}")
 
-    def _calculate_text_x_position(self, text_width: int, margin:int = 10) -> int:
+    def _calculate_text_x_position(self, text_width: int, margin: int = 10) -> int:
         """Calculate the x position for text based on alignment."""
         if self.text_align == "left":
             return margin
@@ -241,6 +251,7 @@ class VideoCaptioner:
 
         # Use binary search to find the index of the first timestamp greater than seconds_since_start
         import bisect
+
         index = bisect.bisect_right(self.sorted_caption_timestamps, seconds_since_start)
 
         # If index is 0, there's no timestamp less than or equal to seconds_since_start
@@ -260,9 +271,7 @@ class VideoCaptioner:
         thickness = 2
 
         # Get text size to calculate position using font manager
-        (text_width, text_height), _ = self.font_manager.get_text_size(
-            caption_text, thickness
-        )
+        (text_width, text_height), _ = self.font_manager.get_text_size(caption_text, thickness)
 
         # Calculate x position based on alignment
         margin = 10
@@ -272,18 +281,13 @@ class VideoCaptioner:
         # First get title height if there is a title
         title_height = 0
         if self.title_text:
-            (_, title_height), _ = self.font_manager.get_text_size(
-                self.title_text, thickness
-            )
+            (_, title_height), _ = self.font_manager.get_text_size(self.title_text, thickness)
 
         # Y position (below title with margin)
         y_pos = margin + title_height + text_height + (margin if title_height > 0 else 0)
 
         # Draw the caption using font manager
-        return self.font_manager.render_text(
-            frame, caption_text, (x_pos, y_pos),
-            self.timestamp_color, thickness
-        )
+        return self.font_manager.render_text(frame, caption_text, (x_pos, y_pos), self.timestamp_color, thickness)
 
     def set_geolocation_labels(self, labels: list[str]) -> None:
         """Set per-frame reverse-geocoded display strings (static overlay band)."""
@@ -304,9 +308,7 @@ class VideoCaptioner:
             y_pos = self.height - text_height - margin * 3
         else:
             y_pos = self.height - 20
-        return self.font_manager.render_text(
-            frame, text, (x_pos, y_pos), self.timestamp_color, thickness
-        )
+        return self.font_manager.render_text(frame, text, (x_pos, y_pos), self.timestamp_color, thickness)
 
     def add_scrolling_text_to_frame(self, frame: np.ndarray, frame_idx: int) -> np.ndarray:
         """Add scrolling text to the frame if provided.
@@ -344,8 +346,7 @@ class VideoCaptioner:
 
         # Draw the scrolling text
         return self.font_manager.render_text(
-            frame, self.scrolling_text, (int(self.scrolling_position), int(y_pos)),
-            self.timestamp_color, thickness
+            frame, self.scrolling_text, (int(self.scrolling_position), int(y_pos)), self.timestamp_color, thickness
         )
 
     def add_title_to_frame(self, frame: np.ndarray) -> np.ndarray:
@@ -363,9 +364,7 @@ class VideoCaptioner:
         thickness = 2
 
         # Get text size to calculate position
-        (text_width, text_height), _ = self.font_manager.get_text_size(
-            self.title_text, thickness
-        )
+        (text_width, text_height), _ = self.font_manager.get_text_size(self.title_text, thickness)
 
         margin = 10
         x_pos = self._calculate_text_x_position(text_width, margin)
@@ -374,18 +373,23 @@ class VideoCaptioner:
         y_pos = margin + text_height
 
         # Draw the title using font manager
-        return self.font_manager.render_text(
-            frame, self.title_text, (x_pos, y_pos),
-            self.timestamp_color, thickness
-        )
+        return self.font_manager.render_text(frame, self.title_text, (x_pos, y_pos), self.timestamp_color, thickness)
 
 
 class VideoGenerator:
     """Generates videos from GPX tracks with map visualization."""
 
-    def __init__(self, output_path: str, fps: int = 30, resolution: Tuple[int, int] = (1280, 720),
-                 zoom_level: int = 15, marker_color: Tuple[int, int, int] = (255, 0, 0),
-                 marker_size: int = 10, text_config=None, captions_file: str = ""):
+    def __init__(
+        self,
+        output_path: str,
+        fps: int = 30,
+        resolution: Tuple[int, int] = (1280, 720),
+        zoom_level: int = 15,
+        marker_color: Tuple[int, int, int] = (255, 0, 0),
+        marker_size: int = 10,
+        text_config=None,
+        captions_file: str = "",
+    ):
         """Initialize the video generator.
 
         Args:
@@ -433,9 +437,11 @@ class VideoGenerator:
             captions_file=captions_file,
             font_file=default_text_config.font_file if text_config is None else text_config.font_file,
             show_timestamp=default_text_config.show_timestamp if text_config is None else text_config.show_timestamp,
-            scrolling_text_file=default_text_config.scrolling_text_file if text_config is None else text_config.scrolling_text_file,
+            scrolling_text_file=default_text_config.scrolling_text_file
+            if text_config is None
+            else text_config.scrolling_text_file,
             scrolling_speed=default_text_config.scrolling_speed if text_config is None else text_config.scrolling_speed,
-            timezone=default_text_config.timezone if text_config is None else text_config.timezone
+            timezone=default_text_config.timezone if text_config is None else text_config.timezone,
         )
 
         self._text_config = default_text_config if text_config is None else text_config
@@ -467,8 +473,9 @@ class VideoGenerator:
 
         return points_with_time
 
-    def _find_interpolation_points(self, points_with_time: List[GPXTrackPoint], 
-                                timestamp: datetime) -> Tuple[int, GPXTrackPoint]:
+    def _find_interpolation_points(
+        self, points_with_time: List[GPXTrackPoint], timestamp: datetime
+    ) -> Tuple[int, GPXTrackPoint]:
         """Find the index and point to use for interpolation using binary search.
 
         Args:
@@ -503,8 +510,7 @@ class VideoGenerator:
 
         return left, points_with_time[left]
 
-    def _interpolate_position(self, points_with_time: List[GPXTrackPoint],
-                              timestamp: datetime) -> Tuple[float, float]:
+    def _interpolate_position(self, points_with_time: List[GPXTrackPoint], timestamp: datetime) -> Tuple[float, float]:
         """Interpolate position at a given timestamp between track points.
 
         Args:
@@ -534,8 +540,8 @@ class VideoGenerator:
 
         # Check if we need to interpolate
         needs_interpolation = (
-            left < len(points_with_time) - 1 and  # Not the last point
-            p1.time != timestamp                   # Not an exact match
+            left < len(points_with_time) - 1  # Not the last point
+            and p1.time != timestamp  # Not an exact match
         )
 
         if needs_interpolation:
@@ -556,8 +562,9 @@ class VideoGenerator:
         self._position_cache[cache_key] = result
         return result
 
-    def _generate_frame(self, frame_idx: int, frame_timestamp: datetime, frame_seconds: float,
-                        points_with_time: List[GPXTrackPoint]) -> np.ndarray:
+    def _generate_frame(
+        self, frame_idx: int, frame_timestamp: datetime, frame_seconds: float, points_with_time: List[GPXTrackPoint]
+    ) -> np.ndarray:
         """Generate a single video frame.
 
         Args:
@@ -597,7 +604,6 @@ class VideoGenerator:
 
         return frame
 
-
     def _generate_frame_data(self, frame_info):
         """Generate frame data for a single frame.
 
@@ -611,8 +617,14 @@ class VideoGenerator:
         frame = self._generate_frame(frame_idx, frame_timestamp, frame_seconds, points_with_time)
         return frame_idx, frame
 
-    def _write_video_frames(self, video_writer: cv2.VideoWriter, points_with_time: List[GPXTrackPoint],
-                            duration_seconds: int, start_time: datetime, total_track_seconds: float) -> None:
+    def _write_video_frames(
+        self,
+        video_writer: cv2.VideoWriter,
+        points_with_time: List[GPXTrackPoint],
+        duration_seconds: int,
+        start_time: datetime,
+        total_track_seconds: float,
+    ) -> None:
         """Write frames to video file.
 
         Args:
@@ -697,7 +709,8 @@ class VideoGenerator:
             total_track_seconds = (end_time - start_time).total_seconds()
 
             logger.info(
-                f"Generating video with duration {duration_seconds}s from track spanning {total_track_seconds}s")
+                f"Generating video with duration {duration_seconds}s from track spanning {total_track_seconds}s"
+            )
 
             if self._text_config.geolocate:
                 from .geolocation_overlay import prefetch_geolocation_labels
@@ -734,15 +747,14 @@ class VideoGenerator:
             logger.info(f"Creating composite map at zoom level {self.zoom_level}...")
             self.map_renderer.create_composite_map(min_lat, min_lon, max_lat, max_lon, self.zoom_level)
             logger.info(
-                f"Composite map created with size {self.map_renderer.composite_map_info['width']}x{self.map_renderer.composite_map_info['height']} pixels")
+                f"Composite map created with size {self.map_renderer.composite_map_info['width']}x{self.map_renderer.composite_map_info['height']} pixels"
+            )
 
             # Initialize video writer
             # Use MPEG4 codec with mp4v FOURCC for MP4 format
             # Define VideoWriter_fourcc directly to avoid undefined reference
-            fourcc = cv2.VideoWriter.fourcc(*'mp4v')
-            video_writer = cv2.VideoWriter(
-                self.output_path, fourcc, self.fps, (self.width, self.height)
-            )
+            fourcc = cv2.VideoWriter.fourcc(*"mp4v")
+            video_writer = cv2.VideoWriter(self.output_path, fourcc, self.fps, (self.width, self.height))
 
             if not video_writer.isOpened():
                 raise ValueError(f"Failed to open video writer for {self.output_path}")

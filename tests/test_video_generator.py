@@ -48,8 +48,9 @@ def vg():
     renderer.render_from_composite.return_value = Image.new("RGB", (64, 48), (10, 20, 30))
     renderer.create_composite_map.return_value = None
     renderer.composite_map_info = {"width": 64, "height": 48}
-    with patch("gpxmapper.video_generator.MapRendererFactory.create", return_value=renderer), patch(
-            "gpxmapper.video_generator.VideoCaptioner", _DummyCaptioner
+    with (
+        patch("gpxmapper.video_generator.MapRendererFactory.create", return_value=renderer),
+        patch("gpxmapper.video_generator.VideoCaptioner", _DummyCaptioner),
     ):
         yield VideoGenerator(output_path="out.mp4", fps=2, resolution=(64, 48))
 

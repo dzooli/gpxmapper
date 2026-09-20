@@ -75,8 +75,8 @@ def test_async_composite_matches_sync_with_mocked_http(tmp_path, png_bytes) -> N
         sync_img = sync_r.create_composite_map(min_lat, min_lon, max_lat, max_lon, zoom)
 
     with patch(
-            "gpxmapper.map_renderer.async_renderer.httpx.AsyncClient",
-            side_effect=fake_client(0.0, png_bytes),
+        "gpxmapper.map_renderer.async_renderer.httpx.AsyncClient",
+        side_effect=fake_client(0.0, png_bytes),
     ):
         async_r = MapRendererAsync(cache_dir=str(tmp_path / "a"), use_cache=False)
         async_img = async_r.create_composite_map(min_lat, min_lon, max_lat, max_lon, zoom)
@@ -166,8 +166,8 @@ def test_async_fetch_tile_uses_shared_headers(tmp_path, png_bytes) -> None:
             return r
 
     with patch(
-            "gpxmapper.map_renderer.async_renderer.httpx.AsyncClient",
-            side_effect=_CapturingHttpxAsyncClient,
+        "gpxmapper.map_renderer.async_renderer.httpx.AsyncClient",
+        side_effect=_CapturingHttpxAsyncClient,
     ):
         renderer = MapRendererAsync(cache_dir=str(tmp_path / "async_headers"), use_cache=False)
         tile = renderer.fetch_tile(0, 0, 0)
@@ -180,9 +180,7 @@ def test_async_single_profile_config_is_valid() -> None:
     total_timeout, connect_timeout = MapRendererBase.get_async_timeout_values(
         MapRendererBase.ASYNC_TIMEOUT_PROFILE_SINGLE
     )
-    max_keepalive, max_connections = MapRendererBase.get_async_limit_values(
-        MapRendererBase.ASYNC_LIMITS_PROFILE_SINGLE
-    )
+    max_keepalive, max_connections = MapRendererBase.get_async_limit_values(MapRendererBase.ASYNC_LIMITS_PROFILE_SINGLE)
     assert total_timeout > 0
     assert connect_timeout > 0
     assert connect_timeout <= total_timeout
@@ -221,9 +219,7 @@ def test_async_batch_profile_config_is_valid() -> None:
     total_timeout, connect_timeout = MapRendererBase.get_async_timeout_values(
         MapRendererBase.ASYNC_TIMEOUT_PROFILE_BOUNDS
     )
-    max_keepalive, max_connections = MapRendererBase.get_async_limit_values(
-        MapRendererBase.ASYNC_LIMITS_PROFILE_BATCH
-    )
+    max_keepalive, max_connections = MapRendererBase.get_async_limit_values(MapRendererBase.ASYNC_LIMITS_PROFILE_BATCH)
     assert total_timeout > 0
     assert connect_timeout > 0
     assert connect_timeout <= total_timeout
@@ -258,17 +254,15 @@ def test_async_bounds_uses_fallback_when_batch_profiles_invalid(tmp_path, png_by
     original_limits = MapRendererBase.ASYNC_LIMITS
     try:
         MapRendererBase.ASYNC_TIMEOUTS = {
-            k: v
-            for k, v in original_timeouts.items()
-            if k != MapRendererBase.ASYNC_TIMEOUT_PROFILE_BOUNDS
+            k: v for k, v in original_timeouts.items() if k != MapRendererBase.ASYNC_TIMEOUT_PROFILE_BOUNDS
         }
         MapRendererBase.ASYNC_LIMITS = {
             **original_limits,
             MapRendererBase.ASYNC_LIMITS_PROFILE_BATCH: (80, 50),
         }
         with patch(
-                "gpxmapper.map_renderer.async_renderer.httpx.AsyncClient",
-                side_effect=_CapturingBatchConfigClient,
+            "gpxmapper.map_renderer.async_renderer.httpx.AsyncClient",
+            side_effect=_CapturingBatchConfigClient,
         ):
             renderer = MapRendererAsync(cache_dir=str(tmp_path / "batch_fallback"), use_cache=False)
             tiles = renderer.get_tiles_for_bounds(47.387014, 18.857873, 47.432039, 18.960122, 12)
@@ -337,8 +331,8 @@ def test_async_composite_parallel_fetch_performance(tmp_path, png_bytes) -> None
         return _FakeHttpxAsyncClient(delay, png_bytes)
 
     with patch(
-            "gpxmapper.map_renderer.async_renderer.httpx.AsyncClient",
-            side_effect=fake_client,
+        "gpxmapper.map_renderer.async_renderer.httpx.AsyncClient",
+        side_effect=fake_client,
     ):
         renderer = MapRendererAsync(cache_dir=str(tmp_path / "perf"), use_cache=False)
         t0 = time.perf_counter()
@@ -356,8 +350,7 @@ def test_async_composite_parallel_fetch_performance(tmp_path, png_bytes) -> None
         f"for {tile_count} tiles at {delay}s each"
     )
     assert elapsed < max_allowed, (
-        f"async composite unexpectedly slow: elapsed={elapsed:.3f}s, "
-        f"max_allowed={max_allowed:.3f}s"
+        f"async composite unexpectedly slow: elapsed={elapsed:.3f}s, max_allowed={max_allowed:.3f}s"
     )
 
 
@@ -387,12 +380,9 @@ def test_sync_composite_parallel_fetch_performance(tmp_path, png_bytes) -> None:
     max_allowed = max(serial_floor * 0.8, delay + 0.5)
 
     assert tile_count >= 4
-    assert elapsed < serial_floor, (
-        f"sync composite took {elapsed:.3f}s, expected below ~serial {serial_floor:.3f}s"
-    )
+    assert elapsed < serial_floor, f"sync composite took {elapsed:.3f}s, expected below ~serial {serial_floor:.3f}s"
     assert elapsed < max_allowed, (
-        f"sync composite unexpectedly slow: elapsed={elapsed:.3f}s, "
-        f"max_allowed={max_allowed:.3f}s"
+        f"sync composite unexpectedly slow: elapsed={elapsed:.3f}s, max_allowed={max_allowed:.3f}s"
     )
 
 
@@ -404,8 +394,8 @@ async def test_async_renderer_sync_methods_fail_inside_event_loop(tmp_path, png_
         return _FakeHttpxAsyncClient(0.0, png_bytes)
 
     with patch(
-            "gpxmapper.map_renderer.async_renderer.httpx.AsyncClient",
-            side_effect=fake_client,
+        "gpxmapper.map_renderer.async_renderer.httpx.AsyncClient",
+        side_effect=fake_client,
     ):
         r = MapRendererAsync(cache_dir=str(tmp_path / "loop"), use_cache=False)
 

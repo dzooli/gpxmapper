@@ -90,9 +90,7 @@ class GeolocationClientSingleton:
     _instance: Optional[AbstractGeolocationClient] = None
 
     @classmethod
-    def get_instance(
-        cls, client: Optional[AbstractGeolocationClient] = None
-    ) -> AbstractGeolocationClient:
+    def get_instance(cls, client: Optional[AbstractGeolocationClient] = None) -> AbstractGeolocationClient:
         """Return the singleton instance, optionally setting it first."""
         if client is not None:
             cls._instance = client
@@ -136,9 +134,7 @@ class RobustExternalCalls:
                 last_exc = exc
                 if attempt < self.max_retries:
                     await asyncio.sleep(self.backoff_factor * (2 ** (attempt - 1)))
-        raise GeolocationServiceUnavailable(
-            f"Service unavailable after {self.max_retries} attempts"
-        ) from last_exc
+        raise GeolocationServiceUnavailable(f"Service unavailable after {self.max_retries} attempts") from last_exc
 
 
 class HttpxClientMixin(RobustExternalCalls):
@@ -154,9 +150,7 @@ class HttpxClientMixin(RobustExternalCalls):
         return self._httpx_client
 
     def _ensure_httpx_client(self) -> httpx.AsyncClient:
-        if self._httpx_client is None or getattr(
-            self._httpx_client, "is_closed", False
-        ):
+        if self._httpx_client is None or getattr(self._httpx_client, "is_closed", False):
             self._httpx_client = httpx.AsyncClient(timeout=self.timeout)
         return self._httpx_client
 
@@ -234,11 +228,11 @@ class NominatimHttpClientBase(HttpxClientMixin, AbstractGeolocationClient):
             return None
 
     def _build_reverse_response(
-            self,
-            data: Dict[str, Any],
-            *,
-            fallback_lat: Optional[float] = None,
-            fallback_lon: Optional[float] = None,
+        self,
+        data: Dict[str, Any],
+        *,
+        fallback_lat: Optional[float] = None,
+        fallback_lon: Optional[float] = None,
     ) -> NominatimReverseResponse:
         """Convert raw Nominatim payload to a typed reverse-geocode response."""
         lat_value = data.get("lat", fallback_lat)
