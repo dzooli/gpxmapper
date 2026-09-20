@@ -47,6 +47,7 @@ from . import check_nominatim  # noqa: E402, F401
 from . import clear_cache  # noqa: E402, F401
 from . import generate  # noqa: E402, F401
 from . import info  # noqa: E402, F401
+from . import tui  # noqa: E402, F401
 
 if __name__ == "__main__":
     app()

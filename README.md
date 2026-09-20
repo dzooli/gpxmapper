@@ -18,6 +18,7 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 - Customize text alignment and font scale
 - Customize the font of text overlays (TTF only)
 - Cache map tiles for faster rendering (default directory is OS-specific; see **Map tile cache** below)
+- Interactive Terminal User Interface (TUI) powered by Trogon and Textual (`gpxmapper tui`)
 - Clear cache to free up disk space via `gpxmapper clear-cache`
 - Performance optimizations:
   - Parallel frame generation using multiple threads
@@ -28,12 +29,12 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 
 ## Library layout
 
+- **gpxmapper.api** — Public programmatic API (`generate_video`, `get_gpx_info`, `clear_tile_cache`, `clear_geolocation_cache`, `get_tile_cache_info`, `get_geolocation_cache_info`, `check_nominatim_status`, `parse_color`, `create_text_config`). Independent of any CLI dependencies or formatting.
+- **gpxmapper.cli** — Command-line presentation layer built with Typer (`generate`, `info`, `clear-cache`, `check-nominatim`, `tui`).
 - **gpxmapper.map_renderer** — `MapRendererBase` (shared geometry, cache path, rendering helpers), `MapRenderer` (sync), `MapRendererAsync` (async), and **MapRendererFactory** (`register_renderer` / `create_renderer`, kinds `sync` | `async`). Video generation uses the **async** renderer by default.
-- **Default tile cache path** — Implemented once on `MapRendererBase.resolve_default_cache_directory()`; CLI
-`clear-cache` uses the same helper so the path always matches renderers.
-- **gpxmapper.models** — Dataclasses such as **TextConfig** (use this module in programmatic examples, not `gpxmapper.cli`).
-- **gpxmapper.geolocation_clients** — Nominatim-style clients and **GeolocationClientFactory** (registry pattern
-analogous to map renderers).
+- **Default tile cache path** — Implemented once on `MapRendererBase.resolve_default_cache_directory()`; CLI `clear-cache` and API functions use the same helper so the path always matches renderers.
+- **gpxmapper.models** — Data transfer objects and configurations (`GPXInfo`, `CacheInfo`, `CacheClearResult`, `MapConfig`, `VideoConfig`, `TextConfig`).
+- **gpxmapper.geolocation_clients** — Nominatim-style clients and **GeolocationClientFactory** (registry pattern analogous to map renderers).
 - **`nominatim/`** (at repository root, not the Python package) — **`start_server.sh`** and **`start_server.bat`** (Windows) bring up local **Docker** Nominatim on port **8080** (default **`PBF_URL`** Hungary); **`verify_local_hungary.sh`** for **`/status`** and sample reverse checks. All three are **copied into the Windows release ZIP** next to `gpxmapper.exe`, with **`install/doc/USER_GUIDE.md`** shipped as **`doc/USER_GUIDE.md`** and **`install/doc/THIRD_PARTY_NOTICES.md`** as **`doc/THIRD_PARTY_NOTICES.md`**. Details under **Nominatim server and `NOMINATIM_SERVER`** below.
 
 ### `dist/` vs `install/` in this repository
@@ -157,6 +158,34 @@ This is the simplest method that handles all dependencies automatically:
   ```
   Staging matches CI: **`release\gpxmapper-v{version}\`** (version from **pyproject.toml**), then **`gpxmapper-release.zip`** with **`gpxmapper-v{version}\`** at the zip root. **Build Windows Executable** assembles the same tree under **`release\`** and uploads **`release/`** as the artifact so the download unpacks to **`gpxmapper-v{version}\`** (no nested `*.zip`).
 
+## Development and Tasks (Poe the Poet)
+
+Common development and quality assurance tasks are configured via [Poe the Poet](https://github.com/nat-n/poethepoet) in `pyproject.toml`:
+
+```bash
+# Run test suite
+uv run poe test
+
+# Run tests with coverage reporting
+uv run poe test-cov
+
+# Run linter and formatting checks
+uv run poe lint
+uv run poe format
+
+# Run full pre-commit check (lint + format + test-cov)
+uv run poe check
+
+# Build standalone Windows executable
+uv run poe build-exe
+
+# Launch interactive TUI
+uv run poe tui
+
+# Build documentation
+uv run poe docs
+```
+
 ## Third-party licenses (Windows executable and ZIP)
 
 This is practical redistribution hygiene, not legal advice. If unsure, use a license or compliance checklist for your situation.
@@ -216,7 +245,29 @@ For Windows executable:
 gpxmapper.exe info path\to\your\file.gpx
 ```
 
+### Launch the interactive Terminal User Interface (TUI)
+
+GPXMapper includes an interactive, browser-like Terminal User Interface (TUI) powered by Textual and Trogon. It lets you explore options, fill out parameters, and execute commands interactively in the terminal.
+
+For Python installation:
+
+```bash
+gpxmapper tui
+# or using poe
+uv run poe tui
+```
+
+For Windows executable:
+
+```cmd
+gpxmapper.exe tui
+```
+
 ## Command-line options
+
+### `tui` command
+
+Opens the interactive Terminal User Interface (TUI) for discovering and running all GPXMapper commands.
 
 ### `generate` command
 
@@ -266,9 +317,43 @@ The reverse-geocode SQLite cache lives **next to** the tile directory; plain `cl
 
 ## Programmatic Usage
 
-GPXMapper can also be used programmatically in your Python code. Here's how to use the library directly:
+GPXMapper provides a clean, decoupled programmatic API under `gpxmapper.api`, returning structured DTOs and raising standard exceptions without any dependency on CLI frameworks.
 
-### Basic Video Generation
+### High-Level API (`gpxmapper.api`)
+
+```python
+from pathlib import Path
+from gpxmapper.api import generate_video, get_gpx_info, get_tile_cache_info, clear_tile_cache
+
+# Inspect GPX file information
+info = get_gpx_info("my_track.gpx")
+print(f"Points: {info.point_count}, Start: {info.start_time}, End: {info.end_time}")
+
+# Generate video with simple configuration
+output = generate_video(
+    gpx_path="my_track.gpx",
+    output_path="output.mp4",
+    duration=60,
+    fps=30,
+    width=1280,
+    height=720,
+    zoom=15,
+    marker_color=(255, 0, 0),
+    title="Morning Ride",
+    text_color=(255, 255, 255),
+)
+print(f"Video saved to: {output}")
+
+# Inspect and clear cache
+cache_info = get_tile_cache_info()
+print(f"Cached tiles: {cache_info.file_count}, Total size: {cache_info.total_size_bytes} bytes")
+clear_result = clear_tile_cache()
+print(f"Deleted {clear_result.deleted_count} files ({clear_result.freed_bytes} bytes freed)")
+```
+
+### Low-Level Custom Pipeline
+
+For direct access to the rendering pipeline:
 
 ```python
 from gpxmapper.gpx_parser import GPXParser

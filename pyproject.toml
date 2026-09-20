@@ -49,6 +49,7 @@ dependencies = [
     "opencv-python>=4.8.0",
     "pillow>=12.3.0",
     "requests>=2.31.0",
+    "trogon>=0.6.0",
     "typer>=0.9.0",
 ]
 
@@ -101,6 +102,8 @@ options = [
     "--hidden-import=PIL",
     "--hidden-import=numpy",
     "--hidden-import=zoneinfo",
+    "--collect-all=trogon",
+    "--collect-all=textual",
     "--specpath=.",
 ]
 
@@ -130,4 +133,6 @@ format = "ruff format ."
 format-check = "ruff format --check ."
 check = ["lint", "format-check", "test"]
 build-exe = "python build_exe.py"
+tui = "gpxmapper tui"
 docs = "mkdocs build"
+
