@@ -239,3 +239,22 @@ def test_trogon_run_executes_post_run_command_in_process() -> None:
 
     assert exc_info.value.code == 0
     mock_main.assert_called_once_with(args=["generate", "--help"], standalone_mode=True)
+
+
+@pytest.mark.asyncio
+async def test_trogon_action_about_shows_gpxmapper_about_dialog() -> None:
+    """Test that action_about pushes GPXMapperAboutDialog containing project info."""
+    from gpxmapper.cli.widgets import GPXMapperAboutDialog
+
+    group = typer.main.get_group(app)
+    trogon_app = Trogon(group, app_name="gpxmapper")
+    async with trogon_app.run_test() as pilot:
+        await pilot.pause()
+        trogon_app.action_about()
+        await pilot.pause()
+
+        assert isinstance(trogon_app.screen, GPXMapperAboutDialog)
+        about_msg = trogon_app.screen.query_one("#message").render().plain
+        assert "GPXMapper" in about_msg
+        assert "Zoltán Fábián" in about_msg
+        assert "https://github.com/dzooli/gpxmapper" in about_msg

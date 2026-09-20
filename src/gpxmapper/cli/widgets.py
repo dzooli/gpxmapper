@@ -12,7 +12,34 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Button, Input, Select, Static
 from trogon.introspect import ArgumentSchema, MultiValueParamData, OptionSchema
+from trogon.widgets.about import TextDialog
 from trogon.widgets.parameter_controls import ControlWidgetType, ParameterControls
+
+
+class GPXMapperAboutDialog(TextDialog):
+    """Custom About dialog displaying GPXMapper project metadata."""
+
+    DEFAULT_CSS = """
+    TextDialog > Vertical {
+        border: thick $accent 80%;
+        min-width: 48;
+        max-width: 68;
+    }
+    """
+
+    def __init__(self) -> None:
+        from gpxmapper import __version__
+
+        title = "🗺  GPXMapper"
+        message = Text.from_markup(
+            f"[b cyan]GPXMapper[/] [b yellow]v{__version__}[/]\n"
+            f"[dim]Creates animated videos from GPX tracks with OpenStreetMap rendering.[/]\n\n"
+            f"[b]Author:[/] Zoltán Fábián\n"
+            f"[b]Repository:[/] [@click=app.visit('https://github.com/dzooli/gpxmapper')]https://github.com/dzooli/gpxmapper[/]\n"
+            f"[b]License:[/] MIT\n\n"
+            f"[dim]Interactive TUI powered by [@click=app.visit('https://github.com/textualize/trogon')]Trogon[/] & [@click=app.visit('https://github.com/textualize/textual')]Textual[/][/]"
+        )
+        super().__init__(title, message)
 
 
 class RangeSlider(Widget):
@@ -373,9 +400,17 @@ def apply_trogon_patches() -> None:
                 except SystemExit as exc:
                     sys.exit(exc.code)
 
+    def _patched_action_about(self: Trogon) -> None:
+        self.app.push_screen(GPXMapperAboutDialog())
+
+    import trogon.widgets.about
+
+    trogon.widgets.about.AboutDialog = GPXMapperAboutDialog
+
     ParameterControls.compose = _patched_param_compose
     ParameterControls.get_control_method = _patched_get_control_method
     ParameterControls._get_form_control_value = _patched_get_form_control_value
     ParameterControls._apply_default_value = _patched_apply_default_value
     CommandForm.compose = _patched_form_compose
     Trogon.run = _patched_trogon_run
+    Trogon.action_about = _patched_action_about
