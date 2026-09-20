@@ -123,7 +123,6 @@ where = ["src"]
 # Then drop this [tool.uv.sources] entry and set e.g. pytest>=9.0.3 in dev dependencies.
 [tool.uv.sources]
 pytest = { git = "https://github.com/pytest-dev/pytest.git", rev = "76a9dd01e33162c54d6824f705e0f9eb2e24228a" }
-
 [tool.poe.tasks]
 test = "pytest"
 test-cov = "pytest --cov=gpxmapper"

@@ -74,7 +74,11 @@ def clear_cache(
             return
 
         result = clear_tile_cache(cache_dir)
-        typer.echo(f"Successfully cleared {result.files_deleted} files from cache directory: {result.cache_path}")
+        if result.success:
+            typer.echo(f"Successfully cleared {result.files_deleted} files from cache directory: {result.cache_path}")
+        else:
+            logger.error("Failed to clear tile cache: %s", result.error_message)
+            raise typer.Abort()
 
     except typer.Abort:
         raise
