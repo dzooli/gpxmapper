@@ -22,29 +22,48 @@ class RangeSlider(Widget):
 
     DEFAULT_CSS = """
     RangeSlider {
-        height: auto;
+        height: 1;
         layout: horizontal;
         padding: 0;
         margin: 0;
     }
-    .slider-track {
-        width: 1fr;
-        height: 1;
-        content-align: center middle;
-    }
-    .slider-val {
-        width: 8;
-        text-align: right;
-        color: $accent;
-        text-style: bold;
-    }
-    .slider-btn {
+    RangeSlider Button {
         min-width: 3;
         width: 3;
         height: 1;
+        min-height: 1;
+        max-height: 1;
         padding: 0;
-        margin: 0 1;
+        margin: 0;
         border: none;
+        background: $primary;
+        color: $text;
+        text-style: bold;
+    }
+    RangeSlider Button:hover {
+        background: $primary-lighten-1;
+    }
+    RangeSlider Button:focus {
+        background: $accent;
+        color: $text;
+    }
+    .slider-track {
+        width: 28;
+        height: 1;
+        margin: 0 1;
+        content-align: center middle;
+    }
+    .slider-val {
+        width: 6;
+        height: 1;
+        text-align: right;
+        color: $accent;
+        text-style: bold;
+        margin-right: 1;
+    }
+    .slider-bounds {
+        height: 1;
+        color: $text-muted;
     }
     """
 
@@ -72,31 +91,37 @@ class RangeSlider(Widget):
             return f"{self.value:.1f}"
         return f"{int(self.value)}"
 
+    @property
+    def bounds_str(self) -> str:
+        """Formatted string representation of min/max bounds."""
+        min_s = f"{self.min_val:.1f}" if self.is_float else f"{int(self.min_val)}"
+        max_s = f"{self.max_val:.1f}" if self.is_float else f"{int(self.max_val)}"
+        return f"[{min_s}..{max_s}]"
+
     def compose(self) -> ComposeResult:
         yield Button("<", classes="slider-btn btn-dec")
-        yield Static(self._render_bar(24), classes="slider-track", id="track")
+        yield Static(self._render_bar(28), classes="slider-track", id="track")
         yield Button(">", classes="slider-btn btn-inc")
         yield Static(self.value_str, classes="slider-val", id="val")
+        yield Static(self.bounds_str, classes="slider-bounds", id="bounds")
 
-    def _render_bar(self, width: int = 24) -> Text:
+    def _render_bar(self, width: int = 28) -> Text:
         span = max(1e-9, (self.max_val - self.min_val))
         ratio = (self.value - self.min_val) / span
         ratio = max(0.0, min(1.0, ratio))
         pos = int(ratio * (width - 1))
-        chars = []
-        for i in range(width):
-            if i == pos:
-                chars.append("●")
-            elif i < pos:
-                chars.append("━")
-            else:
-                chars.append("─")
-        return Text("".join(chars), style="bold cyan")
+        t = Text()
+        if pos > 0:
+            t.append("━" * pos, style="bold cyan")
+        t.append("●", style="bold yellow")
+        if width - 1 - pos > 0:
+            t.append("─" * (width - 1 - pos), style="dim white")
+        return t
 
     def watch_value(self, new_val: float) -> None:
         try:
             track = self.query_one("#track", Static)
-            track.update(self._render_bar(24))
+            track.update(self._render_bar(28))
             val_lbl = self.query_one("#val", Static)
             val_lbl.update(self.value_str)
         except Exception:
