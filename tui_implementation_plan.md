@@ -78,19 +78,16 @@ flowchart TD
   ]
   ```
 
-### 2. TUI Command Integration
+### 2. TUI Command and Advanced Widgets Integration
+- Implemented `src/gpxmapper/cli/widgets.py` with:
+  - `RangeSlider`: Visual Textual widget for bounded numerical options (`--zoom`, `--fps`, `--font-scale`) with decrement/increment buttons (`◀`/`▶`), keyboard arrow support (`left`/`right`/`h`/`l`), unicode track bar (`[━━━━●────────]`), and automatic live command preview sync.
+  - Monkeypatches applied via `apply_trogon_patches()`:
+    - Bounded `click.IntRange` and `click.FloatRange` render as `RangeSlider`.
+    - Boolean options cleanly render as native `Checkbox` controls instead of text boxes.
+    - Enum / Choice options cleanly render as `Select` dropdowns with properly resolved default values.
 - Implemented `src/gpxmapper/cli/tui.py`:
-  ```python
-  """TUI (Terminal User Interface) command powered by Trogon and Textual."""
-  from __future__ import annotations
-
-  from trogon.typer import init_tui
-
-  from . import app
-
-  # Attach trogon interactive TUI to the Typer app as `gpxmapper tui`
-  init_tui(app, name="gpxmapper")
-  ```
+  - Patched upstream Trogon bug where `action_show_command_info` queried the wrong screen instance on `ctrl+o`.
+  - Initialized Typer TUI via `init_tui(app, name="gpxmapper")`.
 - Registered subcommand in `src/gpxmapper/cli/__init__.py`.
 
 ### 3. Automated Test Suite
@@ -98,6 +95,10 @@ flowchart TD
   - `test_tui_command_in_cli_help`: Verifies `tui` is present in `gpxmapper --help`.
   - `test_tui_help`: Verifies `gpxmapper tui --help` exits 0 with descriptive help text.
   - `test_tui_invocation_runs_trogon`: Verifies invoking `tui` initiates `Trogon.run`.
+  - `test_trogon_action_show_command_info_does_not_crash`: Verifies `action_show_command_info` (`ctrl+o`) pushes the CommandInfo screen safely.
+  - `test_trogon_renders_checkboxes_and_select_controls`: Verifies boolean flags render as `Checkbox` and enum choices render as `Select`.
+  - `test_trogon_renders_range_sliders_for_bounded_numbers`: Verifies bounded numerical flags render as `RangeSlider` with valid min/max and defaults.
+  - `test_range_slider_widget_interaction`: Verifies button clicks and keyboard navigation on `RangeSlider`.
 
 ### 4. Documentation
 - Updated `README.md`:

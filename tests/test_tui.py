@@ -83,3 +83,102 @@ async def test_trogon_renders_checkboxes_and_select_controls() -> None:
         selects = list(text_align_ctrl.query(Select))
         assert len(selects) == 1
         assert selects[0].value == "left"
+
+
+@pytest.mark.asyncio
+async def test_trogon_renders_range_sliders_for_bounded_numbers() -> None:
+    """Test that bounded numerical options render as RangeSlider controls."""
+    from gpxmapper.cli.widgets import RangeSlider
+
+    group = typer.main.get_group(app)
+    trogon_app = Trogon(group, app_name="gpxmapper")
+    async with trogon_app.run_test() as pilot:
+        await pilot.pause()
+        tree = trogon_app.query_one(CommandTree)
+        root_group = tree.root.children[0]
+        gen_node = [n for n in root_group.children if "generate" in n.label.plain][0]
+        await trogon_app.screen._refresh_command_form(gen_node)
+        await pilot.pause()
+
+        controls = list(trogon_app.query(ParameterControls))
+        controls_by_name = {
+            tuple(c.schema.name) if isinstance(c.schema.name, list) else (c.schema.name,): c for c in controls
+        }
+
+        # Zoom slider: min 1, max 19, default 15
+        zoom_ctrl = [c for names, c in controls_by_name.items() if any("--zoom" in n for n in names)][0]
+        zoom_sliders = list(zoom_ctrl.query(RangeSlider))
+        assert len(zoom_sliders) == 1
+        assert zoom_sliders[0].min_val == 1
+        assert zoom_sliders[0].max_val == 19
+        assert zoom_sliders[0].value == 15.0
+        assert zoom_sliders[0].value_str == "15"
+
+        # FPS slider: min 1, max 60, default 30
+        fps_ctrl = [c for names, c in controls_by_name.items() if any("--fps" in n for n in names)][0]
+        fps_sliders = list(fps_ctrl.query(RangeSlider))
+        assert len(fps_sliders) == 1
+        assert fps_sliders[0].min_val == 1
+        assert fps_sliders[0].max_val == 60
+        assert fps_sliders[0].value == 30.0
+        assert fps_sliders[0].value_str == "30"
+
+        # Font scale slider: min 0.1, max 5.0, default 0.7, is_float True
+        font_scale_ctrl = [c for names, c in controls_by_name.items() if any("--font-scale" in n for n in names)][0]
+        font_sliders = list(font_scale_ctrl.query(RangeSlider))
+        assert len(font_sliders) == 1
+        assert font_sliders[0].min_val == 0.1
+        assert font_sliders[0].max_val == 5.0
+        assert font_sliders[0].value == 0.7
+        assert font_sliders[0].is_float is True
+        assert font_sliders[0].value_str == "0.7"
+
+
+@pytest.mark.asyncio
+async def test_range_slider_widget_interaction() -> None:
+    """Test interactive behavior of RangeSlider (inc/dec buttons and key events)."""
+    from textual.app import App, ComposeResult
+    from textual.widgets import Button
+
+    from gpxmapper.cli.widgets import RangeSlider
+
+    class SliderApp(App[None]):
+        def compose(self) -> ComposeResult:
+            yield RangeSlider(min_val=1, max_val=10, default_val=5)
+            yield RangeSlider(min_val=0.0, max_val=2.0, default_val=1.0, is_float=True)
+
+    test_app = SliderApp()
+    async with test_app.run_test() as pilot:
+        await pilot.pause()
+        sliders = list(test_app.query(RangeSlider))
+        int_slider = sliders[0]
+        float_slider = sliders[1]
+
+        # Test decrement button on int_slider
+        btn_dec = int_slider.query_one(".btn-dec", Button)
+        btn_inc = int_slider.query_one(".btn-inc", Button)
+
+        btn_dec.press()
+        await pilot.pause()
+        assert int_slider.value == 4.0
+        assert int_slider.value_str == "4"
+
+        btn_inc.press()
+        btn_inc.press()
+        await pilot.pause()
+        assert int_slider.value == 6.0
+        assert int_slider.value_str == "6"
+
+        # Test float slider stepping
+        float_dec = float_slider.query_one(".btn-dec", Button)
+        float_dec.press()
+        await pilot.pause()
+        assert float_slider.value == 0.9
+        assert float_slider.value_str == "0.9"
+
+        # Test keyboard navigation
+        int_slider.focus()
+        await pilot.press("left")
+        assert int_slider.value == 5.0
+        await pilot.press("right")
+        assert int_slider.value == 6.0
