@@ -195,3 +195,28 @@ async def test_range_slider_widget_interaction() -> None:
         assert int_slider.value == 5.0
         await pilot.press("right")
         assert int_slider.value == 6.0
+
+
+@pytest.mark.asyncio
+async def test_trogon_generate_form_grouped_categories() -> None:
+    """Test that the generate command form groups parameters into distinct category sections."""
+    from trogon.widgets.form import CommandForm
+
+    group = typer.main.get_group(app)
+    trogon_app = Trogon(group, app_name="gpxmapper")
+    async with trogon_app.run_test() as pilot:
+        await pilot.pause()
+        tree = trogon_app.query_one(CommandTree)
+        root_group = tree.root.children[0]
+        gen_node = [n for n in root_group.children if "generate" in n.label.plain][0]
+        await trogon_app.screen._refresh_command_form(gen_node)
+        await pilot.pause()
+
+        form = trogon_app.query_one(CommandForm)
+        group_headers = [hdr.render().plain for hdr in form.query(".command-form-group-header")]
+
+        assert "📁 Output & File Options" in group_headers
+        assert "⏱ Video Dimensions & Timing" in group_headers
+        assert "🗺 Map & Marker Styling" in group_headers
+        assert "🔤 Typography & Text Overlay" in group_headers
+        assert "💬 Captions & Geolocation" in group_headers

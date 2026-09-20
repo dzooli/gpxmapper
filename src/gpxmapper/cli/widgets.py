@@ -146,13 +146,15 @@ class RangeSlider(Widget):
         self.post_message(Input.Changed(fake_input, self.value_str))
 
     @on(Button.Pressed, ".btn-dec")
-    def dec(self, event: Button.Pressed) -> None:
-        event.stop()
+    def dec(self, event: Button.Pressed | None = None) -> None:
+        if event is not None:
+            event.stop()
         self.value = max(self.min_val, round(self.value - self.step, 2 if self.is_float else 0))
 
     @on(Button.Pressed, ".btn-inc")
-    def inc(self, event: Button.Pressed) -> None:
-        event.stop()
+    def inc(self, event: Button.Pressed | None = None) -> None:
+        if event is not None:
+            event.stop()
         self.value = min(self.max_val, round(self.value + self.step, 2 if self.is_float else 0))
 
     def on_key(self, event: events.Key) -> None:
@@ -164,23 +166,67 @@ class RangeSlider(Widget):
             event.stop()
 
 
+OPTION_GROUPS: dict[str, dict[str, list[str]]] = {
+    "generate": {
+        "📁 Output & File Options": ["--output"],
+        "⏱ Video Dimensions & Timing": [
+            "--duration",
+            "--fps",
+            "--width",
+            "--height",
+            "--no-timestamp",
+            "--timezone",
+        ],
+        "🗺 Map & Marker Styling": ["--zoom", "--marker-size", "--marker-color"],
+        "🔤 Typography & Text Overlay": [
+            "--title",
+            "--font",
+            "--font-scale",
+            "--text-color",
+            "--text-align",
+        ],
+        "💬 Captions & Geolocation": [
+            "--captions",
+            "--scrolling-text",
+            "--scrolling-speed",
+            "--geolocate",
+        ],
+    }
+}
+
+
 def apply_trogon_patches() -> None:
-    """Apply monkeypatches to Trogon to support Checkbox, RangeSlider, and enum Select dropdowns."""
-    orig_compose = ParameterControls.compose
+    """Apply monkeypatches to Trogon to support Checkbox, RangeSlider, enum Select dropdowns, and grouped controls."""
+    from textual.containers import Vertical, VerticalScroll
+    from textual.widgets import Label
+    from trogon.widgets.form import CommandForm
+
+    orig_param_compose = ParameterControls.compose
     orig_get_control = ParameterControls.get_control_method
     orig_get_form_val = ParameterControls._get_form_control_value
     orig_apply_default = ParameterControls._apply_default_value
 
-    def _patched_compose(self: ParameterControls) -> Any:
+    CommandForm.DEFAULT_CSS += """
+    .command-form-group-header {
+        margin: 1 0 0 0;
+        padding: 0 1;
+        color: $accent;
+        text-style: bold;
+        background: $surface;
+        border-left: wide $accent;
+    }
+    """
+
+    def _patched_param_compose(self: ParameterControls) -> Any:
         orig_type = self.schema.type
         if isinstance(orig_type, click.types.BoolParamType):
             self.schema.type = click.BOOL
             try:
-                yield from orig_compose(self)
+                yield from orig_param_compose(self)
             finally:
                 self.schema.type = orig_type
         else:
-            yield from orig_compose(self)
+            yield from orig_param_compose(self)
 
     def _patched_get_control_method(
         self: ParameterControls, argument_type: Any
@@ -225,7 +271,77 @@ def apply_trogon_patches() -> None:
         else:
             orig_apply_default(control_widget, default_value)
 
-    ParameterControls.compose = _patched_compose
+    def _patched_form_compose(self: CommandForm) -> Any:
+        path_from_root = iter(reversed(self.command_schema.path_from_root))
+        command_node = next(path_from_root)
+        with VerticalScroll() as vs:
+            vs.can_focus = False
+
+            yield Input(
+                placeholder="Search...",
+                classes="command-form-filter-input",
+                id="search",
+            )
+
+            while command_node is not None:
+                options = command_node.options
+                arguments = command_node.arguments
+                if options or arguments:
+                    with Vertical(classes="command-form-command-group", id=command_node.key) as v:
+                        is_inherited = command_node is not self.command_schema
+                        prefix = "↪ " if is_inherited else ""
+                        v.border_title = f"{prefix}{command_node.name}"
+                        if is_inherited:
+                            v.border_title += " [dim not bold](inherited)"
+                        if arguments:
+                            yield Label("Arguments", classes="command-form-heading")
+                            for argument in arguments:
+                                controls = ParameterControls(argument, id=argument.key)
+                                if self.first_control is None:
+                                    self.first_control = controls
+                                yield controls
+
+                        if options:
+                            groups = OPTION_GROUPS.get(command_node.name)
+                            if groups:
+                                consumed = set()
+                                for grp_name, grp_opts in groups.items():
+                                    matched = [
+                                        opt
+                                        for opt in options
+                                        if any(
+                                            n in grp_opts
+                                            for n in (opt.name if isinstance(opt.name, (list, tuple)) else [opt.name])
+                                        )
+                                    ]
+                                    if matched:
+                                        yield Label(grp_name, classes="command-form-group-header")
+                                        for option in matched:
+                                            consumed.add(option.key)
+                                            controls = ParameterControls(option, id=option.key)
+                                            if self.first_control is None:
+                                                self.first_control = controls
+                                            yield controls
+                                remaining = [opt for opt in options if opt.key not in consumed]
+                                if remaining:
+                                    yield Label("⚙ Other Options", classes="command-form-group-header")
+                                    for option in remaining:
+                                        controls = ParameterControls(option, id=option.key)
+                                        if self.first_control is None:
+                                            self.first_control = controls
+                                        yield controls
+                            else:
+                                yield Label("Options", classes="command-form-heading")
+                                for option in options:
+                                    controls = ParameterControls(option, id=option.key)
+                                    if self.first_control is None:
+                                        self.first_control = controls
+                                yield controls
+
+                command_node = next(path_from_root, None)
+
+    ParameterControls.compose = _patched_param_compose
     ParameterControls.get_control_method = _patched_get_control_method
     ParameterControls._get_form_control_value = _patched_get_form_control_value
     ParameterControls._apply_default_value = _patched_apply_default_value
+    CommandForm.compose = _patched_form_compose
