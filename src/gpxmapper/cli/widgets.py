@@ -196,9 +196,10 @@ OPTION_GROUPS: dict[str, dict[str, list[str]]] = {
 
 
 def apply_trogon_patches() -> None:
-    """Apply monkeypatches to Trogon to support Checkbox, RangeSlider, enum Select dropdowns, and grouped controls."""
+    """Apply monkeypatches to Trogon to support Checkbox, RangeSlider, enum Select dropdowns, grouped controls, and in-process execution."""
     from textual.containers import Vertical, VerticalScroll
     from textual.widgets import Label
+    from trogon.trogon import Trogon
     from trogon.widgets.form import CommandForm
 
     orig_param_compose = ParameterControls.compose
@@ -340,8 +341,41 @@ def apply_trogon_patches() -> None:
 
                 command_node = next(path_from_root, None)
 
+    def _patched_trogon_run(
+        self: Trogon,
+        *args: Any,
+        headless: bool = False,
+        size: tuple[int, int] | None = None,
+        auto_pilot: Any | None = None,
+        **kwargs: Any,
+    ) -> None:
+        try:
+            super(Trogon, self).run(
+                *args,
+                headless=headless,
+                size=size,
+                auto_pilot=auto_pilot,
+                **kwargs,
+            )
+        finally:
+            if self.post_run_command and self.execute_on_exit:
+                import shlex
+                import sys
+
+                from rich.console import Console
+
+                console = Console()
+                console.print(
+                    f"Running [b cyan]{self.app_name} {' '.join(shlex.quote(s) for s in self.post_run_command)}[/]"
+                )
+                try:
+                    self.cli.main(args=self.post_run_command, standalone_mode=True)
+                except SystemExit as exc:
+                    sys.exit(exc.code)
+
     ParameterControls.compose = _patched_param_compose
     ParameterControls.get_control_method = _patched_get_control_method
     ParameterControls._get_form_control_value = _patched_get_form_control_value
     ParameterControls._apply_default_value = _patched_apply_default_value
     CommandForm.compose = _patched_form_compose
+    Trogon.run = _patched_trogon_run

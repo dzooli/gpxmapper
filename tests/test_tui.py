@@ -220,3 +220,22 @@ async def test_trogon_generate_form_grouped_categories() -> None:
         assert "🗺  Map & Marker Styling" in group_headers
         assert "🔤  Typography & Text Overlay" in group_headers
         assert "💬  Captions & Geolocation" in group_headers
+
+
+def test_trogon_run_executes_post_run_command_in_process() -> None:
+    """Test that Trogon.run executes post_run_command in-process via cli.main instead of os.execvp."""
+    from unittest.mock import MagicMock
+
+    group = typer.main.get_group(app)
+    trogon_app = Trogon(group, app_name="gpxmapper")
+    trogon_app.post_run_command = ["generate", "--help"]
+    trogon_app.execute_on_exit = True
+
+    mock_main = MagicMock(side_effect=SystemExit(0))
+    trogon_app.cli.main = mock_main
+
+    with patch("textual.app.App.run", return_value=None), pytest.raises(SystemExit) as exc_info:
+        trogon_app.run()
+
+    assert exc_info.value.code == 0
+    mock_main.assert_called_once_with(args=["generate", "--help"], standalone_mode=True)
