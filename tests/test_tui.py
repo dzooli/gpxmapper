@@ -215,8 +215,8 @@ async def test_trogon_generate_form_grouped_categories() -> None:
         form = trogon_app.query_one(CommandForm)
         group_headers = [hdr.render().plain for hdr in form.query(".command-form-group-header")]
 
-        assert "📁 Output & File Options" in group_headers
-        assert "⏱ Video Dimensions & Timing" in group_headers
-        assert "🗺 Map & Marker Styling" in group_headers
-        assert "🔤 Typography & Text Overlay" in group_headers
-        assert "💬 Captions & Geolocation" in group_headers
+        assert "📁  Output & File Options" in group_headers
+        assert "⏱  Video Dimensions & Timing" in group_headers
+        assert "🗺  Map & Marker Styling" in group_headers
+        assert "🔤  Typography & Text Overlay" in group_headers
+        assert "💬  Captions & Geolocation" in group_headers

@@ -168,8 +168,8 @@ class RangeSlider(Widget):
 
 OPTION_GROUPS: dict[str, dict[str, list[str]]] = {
     "generate": {
-        "📁 Output & File Options": ["--output"],
-        "⏱ Video Dimensions & Timing": [
+        "📁  Output & File Options": ["--output"],
+        "⏱  Video Dimensions & Timing": [
             "--duration",
             "--fps",
             "--width",
@@ -177,15 +177,15 @@ OPTION_GROUPS: dict[str, dict[str, list[str]]] = {
             "--no-timestamp",
             "--timezone",
         ],
-        "🗺 Map & Marker Styling": ["--zoom", "--marker-size", "--marker-color"],
-        "🔤 Typography & Text Overlay": [
+        "🗺  Map & Marker Styling": ["--zoom", "--marker-size", "--marker-color"],
+        "🔤  Typography & Text Overlay": [
             "--title",
             "--font",
             "--font-scale",
             "--text-color",
             "--text-align",
         ],
-        "💬 Captions & Geolocation": [
+        "💬  Captions & Geolocation": [
             "--captions",
             "--scrolling-text",
             "--scrolling-speed",
