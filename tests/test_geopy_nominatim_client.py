@@ -66,9 +66,7 @@ class TestAsyncGeopyNominatimClient:
         assert result.osm_id == 456
 
     @pytest.mark.asyncio
-    async def test_reverse_geocode_empty_response_raises(
-        self, geopy_client, monkeypatch
-    ):
+    async def test_reverse_geocode_empty_response_raises(self, geopy_client, monkeypatch):
         async def fake_to_thread(func, /, *args, **kwargs):
             await asyncio.sleep(0)
             return func(*args, **kwargs)
@@ -116,9 +114,7 @@ class TestAsyncGeopyNominatimClient:
         assert result.boundingbox is None
 
     @pytest.mark.asyncio
-    async def test_reverse_geocode_missing_lat_lon_fallback(
-        self, geopy_client, monkeypatch
-    ):
+    async def test_reverse_geocode_missing_lat_lon_fallback(self, geopy_client, monkeypatch):
         async def fake_to_thread(func, /, *args, **kwargs):
             await asyncio.sleep(0)
             return func(*args, **kwargs)
@@ -169,9 +165,7 @@ class TestAsyncGeopyNominatimClient:
             fake_reverse,
         )
 
-        await geopy_client.reverse_geocode(
-            1.0, 2.0, extra_params={"namedetails": False, "zoom": 10}
-        )
+        await geopy_client.reverse_geocode(1.0, 2.0, extra_params={"namedetails": False, "zoom": 10})
         assert captured["arg"] == (1.0, 2.0)
         assert captured["kwargs"]["exactly_one"] is True
         assert captured["kwargs"]["addressdetails"] is True
@@ -195,9 +189,7 @@ class TestAsyncGeopyNominatimClient:
         assert call_count["count"] == geopy_client.max_retries
 
     @pytest.mark.asyncio
-    async def test_reverse_geocode_succeeds_after_retry(
-        self, geopy_client, monkeypatch
-    ):
+    async def test_reverse_geocode_succeeds_after_retry(self, geopy_client, monkeypatch):
         attempt = {"i": 0}
         result_raw = {
             "place_id": 7,
@@ -235,9 +227,7 @@ class TestAsyncGeopyNominatimClient:
         mock_response.text = "<html>Status OK</html>"
         mock_response.status_code = 200
         mock_response.raise_for_status = Mock()
-        monkeypatch.setattr(
-            httpx_client, "request", AsyncMock(return_value=mock_response)
-        )
+        monkeypatch.setattr(httpx_client, "request", AsyncMock(return_value=mock_response))
 
         result = await geopy_client.get_status()
         assert isinstance(result, NominatimStatusResponse)

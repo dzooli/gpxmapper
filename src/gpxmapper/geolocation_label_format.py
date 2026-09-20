@@ -145,11 +145,7 @@ def _append_region_for_disambiguation(
         if all(region.lower() not in s.lower() for s in segments):
             segments.append(region)
         return
-    if (
-        len(segments) == 1
-        and place_label == segments[0]
-        and region.lower() != place_label.lower()
-    ):
+    if len(segments) == 1 and place_label == segments[0] and region.lower() != place_label.lower():
         segments.append(region)
 
 

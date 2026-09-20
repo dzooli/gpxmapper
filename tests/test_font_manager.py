@@ -69,9 +69,7 @@ def test_render_text_pil_path_returns_new_array_same_shape(mocker):
 def test_load_custom_font_passes_scaled_size_to_truetype(mocker):
     mocker.patch("gpxmapper.font_manager.os.path.exists", return_value=True)
     mock_font = MagicMock()
-    mock_truetype = mocker.patch(
-        "gpxmapper.font_manager.ImageFont.truetype", return_value=mock_font
-    )
+    mock_truetype = mocker.patch("gpxmapper.font_manager.ImageFont.truetype", return_value=mock_font)
 
     FontManager(font_file="/fake/font.ttf", font_scale=2.0)
 

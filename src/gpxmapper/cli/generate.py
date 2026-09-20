@@ -16,89 +16,37 @@ logger = logging.getLogger(__name__)
 @app.command()
 def generate(
     gpx_file: Path = typer.Argument(
-        ...,
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-        help="Path to the input GPX file"
+        ..., exists=True, file_okay=True, dir_okay=False, readable=True, help="Path to the input GPX file"
     ),
     output_file: Path = typer.Option(
-        None,
-        "--output", "-o",
-        help="Path to the output video file (default: input filename with .mp4 extension)"
+        None, "--output", "-o", help="Path to the output video file (default: input filename with .mp4 extension)"
     ),
-    duration: int = typer.Option(
-        60,
-        "--duration", "-d",
-        min=1,
-        help="Duration of the output video in seconds"
-    ),
-    fps: int = typer.Option(
-        30,
-        "--fps", "-f",
-        min=1,
-        max=60,
-        help="Frames per second for the output video"
-    ),
-    width: int = typer.Option(
-        320,
-        "--width", "-w",
-        min=128,
-        help="Width of the output video in pixels"
-    ),
-    height: int = typer.Option(
-        320,
-        "--height", "-h",
-        min=128,
-        help="Height of the output video in pixels"
-    ),
+    duration: int = typer.Option(60, "--duration", "-d", min=1, help="Duration of the output video in seconds"),
+    fps: int = typer.Option(30, "--fps", "-f", min=1, max=60, help="Frames per second for the output video"),
+    width: int = typer.Option(320, "--width", "-w", min=128, help="Width of the output video in pixels"),
+    height: int = typer.Option(320, "--height", "-h", min=128, help="Height of the output video in pixels"),
     zoom: int = typer.Option(
-        15,
-        "--zoom", "-z",
-        min=1,
-        max=19,
-        help="Zoom level for the map (1-19, higher is more detailed)"
+        15, "--zoom", "-z", min=1, max=19, help="Zoom level for the map (1-19, higher is more detailed)"
     ),
-    marker_size: int = typer.Option(
-        10,
-        "--marker-size", "-m",
-        min=1,
-        help="Size of the position marker in pixels"
-    ),
+    marker_size: int = typer.Option(10, "--marker-size", "-m", min=1, help="Size of the position marker in pixels"),
     marker_color: str = typer.Option(
-        "255,0,0",
-        "--marker-color", "-c",
-        help="Color of the position marker as R,G,B (e.g., '255,0,0' for red)"
+        "255,0,0", "--marker-color", "-c", help="Color of the position marker as R,G,B (e.g., '255,0,0' for red)"
     ),
     text_color: str = typer.Option(
         "0,0,0",
-        "--text-color", "-tc",
+        "--text-color",
+        "-tc",
         help="R,G,B color for all text overlays (timestamp, title, captions, scrolling, geolocation), 0-255 per channel (default 0,0,0 black).",
     ),
     # Text rendering options
     font_scale: float = typer.Option(
-        0.7,
-        "--font-scale", "-fs",
-        min=0.1,
-        max=5.0,
-        help="Font scale for all text (timestamp, title, captions)"
+        0.7, "--font-scale", "-fs", min=0.1, max=5.0, help="Font scale for all text (timestamp, title, captions)"
     ),
-    title_text: Optional[str] = typer.Option(
-        None,
-        "--title",
-        help="Optional text to display as a title on the video"
-    ),
+    title_text: Optional[str] = typer.Option(None, "--title", help="Optional text to display as a title on the video"),
     text_align: str = typer.Option(
-        "left",
-        "--text-align", "-ta",
-        help="Alignment of all text (title, captions) (left, center, right)"
+        "left", "--text-align", "-ta", help="Alignment of all text (title, captions) (left, center, right)"
     ),
-    no_timestamp: bool = typer.Option(
-        False,
-        "--no-timestamp",
-        help="Disable timestamp visualization in the video"
-    ),
+    no_timestamp: bool = typer.Option(False, "--no-timestamp", help="Disable timestamp visualization in the video"),
     captions: Optional[Path] = typer.Option(
         None,
         "--captions",
@@ -106,31 +54,34 @@ def generate(
         exists=True,
         file_okay=True,
         dir_okay=False,
-        readable=True
+        readable=True,
     ),
     font_file: Optional[Path] = typer.Option(
         None,
-        "--font", "-ff",
+        "--font",
+        "-ff",
         help="Path to a TrueType font file (.ttf) for text rendering",
         exists=True,
         file_okay=True,
         dir_okay=False,
-        readable=True
+        readable=True,
     ),
     scrolling_text: Optional[Path] = typer.Option(
         None,
-        "--scrolling-text", "-st",
+        "--scrolling-text",
+        "-st",
         help="Path to a text file containing content to be scrolled on the video",
         exists=True,
         file_okay=True,
         dir_okay=False,
-        readable=True
+        readable=True,
     ),
     scrolling_speed: Optional[float] = typer.Option(
         None,
-        "--scrolling-speed", "-ss",
+        "--scrolling-speed",
+        "-ss",
         min=0.1,
-        help="Speed at which the text scrolls across the video (pixels per frame). If not specified, speed will be calculated based on video duration."
+        help="Speed at which the text scrolls across the video (pixels per frame). If not specified, speed will be calculated based on video duration.",
     ),
     geolocate: bool = typer.Option(
         False,
@@ -139,9 +90,10 @@ def generate(
     ),
     timezone: Optional[str] = typer.Option(
         None,
-        "--timezone", "-tz",
+        "--timezone",
+        "-tz",
         help="Timezone to convert timestamps to. Must be a full timezone name (e.g., 'Europe/Budapest', 'US/Pacific'). "
-             "If not specified, timestamps are not converted."
+        "If not specified, timestamps are not converted.",
     ),
 ):
     """Generate a video from a GPX track file.
@@ -183,18 +135,9 @@ def generate(
             geolocate=geolocate,
         )
 
-        video_config = VideoConfig(
-            fps=fps,
-            width=width,
-            height=height,
-            duration=duration
-        )
+        video_config = VideoConfig(fps=fps, width=width, height=height, duration=duration)
 
-        map_config = MapConfig(
-            zoom=zoom,
-            marker_size=marker_size,
-            marker_color=marker_color_tuple
-        )
+        map_config = MapConfig(zoom=zoom, marker_size=marker_size, marker_color=marker_color_tuple)
 
         # Generate video
         output_path = generate_video(
@@ -203,7 +146,7 @@ def generate(
             video_config=video_config,
             map_config=map_config,
             text_config=text_config,
-            captions=captions
+            captions=captions,
         )
 
         logger.info(f"Video generated successfully: {output_path}")

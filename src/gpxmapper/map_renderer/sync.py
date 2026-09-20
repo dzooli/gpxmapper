@@ -22,19 +22,15 @@ class MapRenderer(MapRendererBase):
     """Fetches and renders map tiles using synchronous HTTP and a thread pool."""
 
     def __init__(
-            self,
-            tile_server: Optional[str] = None,
-            cache_dir: Optional[str] = None,
-            use_cache: bool = True,
-            request_timeout: Optional[float] = None,
+        self,
+        tile_server: Optional[str] = None,
+        cache_dir: Optional[str] = None,
+        use_cache: bool = True,
+        request_timeout: Optional[float] = None,
     ):
         resolved_server = tile_server if tile_server is not None else DEFAULT_TILE_SERVER
         super().__init__(resolved_server, cache_dir, use_cache)
-        resolved_timeout = (
-            self.get_sync_request_timeout()
-            if request_timeout is None
-            else float(request_timeout)
-        )
+        resolved_timeout = self.get_sync_request_timeout() if request_timeout is None else float(request_timeout)
         if resolved_timeout <= 0:
             raise ValueError("request_timeout must be positive")
         self.request_timeout = resolved_timeout
@@ -72,7 +68,7 @@ class MapRenderer(MapRendererBase):
         return self.fetch_tile(x, y, zoom)
 
     def get_tiles_for_bounds(
-            self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
+        self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> List[MapTile]:
         """Get all tiles needed to cover the given geographic bounds."""
         tile_coords = self.build_tile_coords_for_bounds(min_lat, min_lon, max_lat, max_lon, zoom)
@@ -86,12 +82,10 @@ class MapRenderer(MapRendererBase):
         return tiles
 
     def create_composite_map(
-            self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
+        self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> Image.Image:
         """Create a large composite image from all tiles in the bounding box."""
-        min_tile, max_tile, dimensions = self.compute_composite_geometry(
-            min_lat, min_lon, max_lat, max_lon, zoom
-        )
+        min_tile, max_tile, dimensions = self.compute_composite_geometry(min_lat, min_lon, max_lat, max_lon, zoom)
 
         composite = Image.new("RGB", (dimensions.x, dimensions.y))
 

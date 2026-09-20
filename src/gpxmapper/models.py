@@ -6,7 +6,8 @@ These classes represent various entities like GPX track points, map tiles, and c
 
 import math
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict, Optional, Tuple, Any
 
 from PIL import Image
@@ -15,6 +16,7 @@ from PIL import Image
 @dataclass(slots=True, frozen=True)
 class Point:
     """Represents a 2D point with x and y coordinates."""
+
     x: int
     y: int
 
@@ -22,6 +24,7 @@ class Point:
 @dataclass(slots=True, frozen=True)
 class GeoPoint:
     """Represents a geographic point with latitude and longitude."""
+
     lat: float
     lon: float
 
@@ -29,6 +32,7 @@ class GeoPoint:
 @dataclass(slots=True, frozen=True)
 class Rectangle:
     """Represents a rectangle with left, top, right, bottom coordinates."""
+
     left: int
     top: int
     right: int
@@ -48,15 +52,21 @@ class Rectangle:
 class GPXTrackPoint:
     """Represents a single point in a GPX track with time and position."""
 
-    def __init__(self, latitude: float, longitude: float, elevation: Optional[float], 
-                 time: Optional[datetime], extensions: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        latitude: float,
+        longitude: float,
+        elevation: Optional[float],
+        time: Optional[datetime],
+        extensions: Optional[Dict[str, Any]] = None,
+    ):
         self.latitude = latitude
         self.longitude = longitude
         self.elevation = elevation
         self.time = time
         self.extensions = extensions or {}
 
-    def distance_to(self, other: 'GPXTrackPoint') -> float:
+    def distance_to(self, other: "GPXTrackPoint") -> float:
         """
         Calculates the great-circle distance between the current point and another GPX track point
         using the Haversine formula. The result is given in meters.
@@ -78,7 +88,7 @@ class GPXTrackPoint:
 
         return average_earth_radius * c
 
-    def elevation_gain(self, other: 'GPXTrackPoint') -> float:
+    def elevation_gain(self, other: "GPXTrackPoint") -> float:
         """
         Calculates the elevation gain between the current track point and another.
 
@@ -99,13 +109,13 @@ class GPXTrackPoint:
             return 0.0
         return max(0.0, other.elevation - self.elevation)
 
-    def time_delta(self, other: 'GPXTrackPoint') -> Optional[float]:
+    def time_delta(self, other: "GPXTrackPoint") -> Optional[float]:
         """Calculate the time difference in seconds."""
         if self.time is None or other.time is None:
             return None
         return (other.time - self.time).total_seconds()
 
-    def speed_to(self, other: 'GPXTrackPoint') -> Optional[float]:
+    def speed_to(self, other: "GPXTrackPoint") -> Optional[float]:
         """Calculate speed in m/s to another point."""
         distance = self.distance_to(other)
         time_diff = self.time_delta(other)
@@ -133,11 +143,11 @@ class GPXTrackPoint:
     def to_dict(self) -> dict:
         """Convert to dictionary representation."""
         return {
-            'lat': self.latitude,
-            'lon': self.longitude,
-            'ele': self.elevation,
-            'time': self.time.isoformat() if self.time else None,
-            'extensions': self.extensions or {}
+            "lat": self.latitude,
+            "lon": self.longitude,
+            "ele": self.elevation,
+            "time": self.time.isoformat() if self.time else None,
+            "extensions": self.extensions or {},
         }
 
     def __repr__(self) -> str:
@@ -173,6 +183,7 @@ class TextConfig:
     title, captions, scrolling text, and geolocation line). The CLI exposes it as
     ``--text-color``; the field name is historical.
     """
+
     font_scale: float = 0.7
     title_text: Optional[str] = None
     text_align: str = "left"
@@ -188,6 +199,7 @@ class TextConfig:
 @dataclass(slots=True, frozen=True)
 class VideoConfig:
     """Configuration for video generation."""
+
     fps: int
     width: int
     height: int
@@ -197,6 +209,38 @@ class VideoConfig:
 @dataclass(slots=True, frozen=True)
 class MapConfig:
     """Configuration for map rendering."""
+
     zoom: int
     marker_size: int
     marker_color: Tuple[int, int, int]
+
+
+@dataclass(slots=True, frozen=True)
+class GPXInfo:
+    """Summary information about a parsed GPX file."""
+
+    file_path: Path
+    point_count: int
+    start_time: Optional[datetime]
+    end_time: Optional[datetime]
+    duration: Optional[timedelta]
+    coordinate_bounds: Tuple[float, float, float, float]  # (min_lat, min_lon, max_lat, max_lon)
+
+
+@dataclass(slots=True, frozen=True)
+class CacheInfo:
+    """Information about a cache directory or database file."""
+
+    cache_path: Path
+    file_count: int
+    exists: bool
+
+
+@dataclass(slots=True, frozen=True)
+class CacheClearResult:
+    """Result of a cache clearing operation."""
+
+    cache_path: Path
+    files_deleted: int
+    success: bool
+    error_message: Optional[str] = None

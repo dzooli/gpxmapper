@@ -41,12 +41,12 @@ class MapRendererFactory:
 
     @classmethod
     def create(
-            cls,
-            kind: Union[MapRendererKind, str] = MapRendererKind.SYNC,
-            *,
-            tile_server: Optional[str] = None,
-            cache_dir: Optional[str] = None,
-            use_cache: bool = True,
+        cls,
+        kind: Union[MapRendererKind, str] = MapRendererKind.SYNC,
+        *,
+        tile_server: Optional[str] = None,
+        cache_dir: Optional[str] = None,
+        use_cache: bool = True,
     ) -> MapRendererBase:
         """Instantiate the requested renderer (preferred public entry point).
 

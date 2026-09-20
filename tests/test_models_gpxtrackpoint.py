@@ -8,12 +8,12 @@ from gpxmapper.models import GPXTrackPoint
 
 
 def _point(
-        lat: float,
-        lon: float,
-        *,
-        ele: float | None = None,
-        time: datetime | None = None,
-        extensions: dict | None = None,
+    lat: float,
+    lon: float,
+    *,
+    ele: float | None = None,
+    time: datetime | None = None,
+    extensions: dict | None = None,
 ) -> GPXTrackPoint:
     return GPXTrackPoint(lat, lon, ele, time, extensions)
 

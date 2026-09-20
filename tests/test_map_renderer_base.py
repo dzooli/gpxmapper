@@ -25,8 +25,15 @@ class _TestRenderer(MapRendererBase):
     def create_composite_map(self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int):
         img = Image.new("RGB", (256, 256))
         self.composite_map = img
-        self.composite_map_info = {"min_x": 0, "min_y": 0, "max_x": 0, "max_y": 0, "zoom": zoom, "width": 256,
-                                   "height": 256}
+        self.composite_map_info = {
+            "min_x": 0,
+            "min_y": 0,
+            "max_x": 0,
+            "max_y": 0,
+            "zoom": zoom,
+            "width": 256,
+            "height": 256,
+        }
         return img
 
 
@@ -37,8 +44,9 @@ def renderer(tmp_path):
 
 def test_resolve_default_cache_directory_memoizes_by_os() -> None:
     MapRendererBase._default_cache_dir_by_system.clear()
-    with patch("gpxmapper.map_renderer.base.platform.system", return_value="Linux"), patch(
-            "gpxmapper.map_renderer.base.os.path.expanduser", return_value="/home/tester"
+    with (
+        patch("gpxmapper.map_renderer.base.platform.system", return_value="Linux"),
+        patch("gpxmapper.map_renderer.base.os.path.expanduser", return_value="/home/tester"),
     ):
         first = MapRendererBase.resolve_default_cache_directory()
         second = MapRendererBase.resolve_default_cache_directory()

@@ -86,10 +86,10 @@ class MapRendererBase(ABC):
         return cache_dir
 
     def __init__(
-            self,
-            tile_server: str = DEFAULT_TILE_SERVER,
-            cache_dir: Optional[str] = None,
-            use_cache: bool = True,
+        self,
+        tile_server: str = DEFAULT_TILE_SERVER,
+        cache_dir: Optional[str] = None,
+        use_cache: bool = True,
     ):
         """Initialize the map renderer.
 
@@ -148,8 +148,7 @@ class MapRendererBase(ABC):
             raise ValueError(f"Async timeout values must be positive for profile: {profile}")
         if connect > total:
             raise ValueError(
-                f"Async connect timeout ({connect}) cannot exceed total timeout ({total}) "
-                f"for profile: {profile}"
+                f"Async connect timeout ({connect}) cannot exceed total timeout ({total}) for profile: {profile}"
             )
         return float(total), float(connect)
 
@@ -170,12 +169,12 @@ class MapRendererBase(ABC):
 
     @classmethod
     def resolve_async_client_config(
-            cls,
-            *,
-            timeout_profile: str,
-            limits_profile: str,
-            fallback_timeout: tuple[float, float],
-            fallback_limits: tuple[int, int],
+        cls,
+        *,
+        timeout_profile: str,
+        limits_profile: str,
+        fallback_timeout: tuple[float, float],
+        fallback_limits: tuple[int, int],
     ) -> tuple[tuple[float, float], tuple[int, int]]:
         """Resolve async HTTP config for a profile, with validated fallbacks."""
         try:
@@ -204,13 +203,13 @@ class MapRendererBase(ABC):
 
     @classmethod
     def resolve_adaptive_async_client_config(
-            cls,
-            *,
-            timeout_profile: str,
-            limits_profile: str,
-            fallback_timeout: tuple[float, float],
-            fallback_limits: tuple[int, int],
-            task_count: Optional[int] = None,
+        cls,
+        *,
+        timeout_profile: str,
+        limits_profile: str,
+        fallback_timeout: tuple[float, float],
+        fallback_limits: tuple[int, int],
+        task_count: Optional[int] = None,
     ) -> tuple[tuple[float, float], tuple[int, int]]:
         """Resolve async config and adapt it for variable batch sizes.
 
@@ -265,15 +264,10 @@ class MapRendererBase(ABC):
 
     def build_tile_coords(self, min_x: int, max_x: int, min_y: int, max_y: int, zoom: int) -> List[tuple]:
         """Build list of (x,y,zoom) tile coordinates for the given tile bounds."""
-        return [
-            (x, y, zoom)
-            for x, y in itertools.product(
-                range(min_x, max_x + 1), range(min_y, max_y + 1)
-            )
-        ]
+        return [(x, y, zoom) for x, y in itertools.product(range(min_x, max_x + 1), range(min_y, max_y + 1))]
 
     def build_tile_coords_for_bounds(
-            self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
+        self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> List[tuple]:
         """Build tile coords for geographic bounds."""
         min_x, max_y = self.deg2num(min_lat, min_lon, zoom)
@@ -281,14 +275,14 @@ class MapRendererBase(ABC):
         return self.build_tile_coords(min_x, max_x, min_y, max_y, zoom)
 
     def paste_tiles_to_composite(
-            self,
-            composite: Image.Image,
-            min_x: int,
-            min_y: int,
-            max_x: int,
-            max_y: int,
-            zoom: int,
-            tile_lookup: dict,
+        self,
+        composite: Image.Image,
+        min_x: int,
+        min_y: int,
+        max_x: int,
+        max_y: int,
+        zoom: int,
+        tile_lookup: dict,
     ) -> None:
         """Paste tiles from tile_lookup onto composite image, filling blanks if missing."""
         for x, y in itertools.product(range(min_x, max_x + 1), range(min_y, max_y + 1)):
@@ -340,7 +334,7 @@ class MapRendererBase(ABC):
     def deg2num(cls, lat_deg: float, lon_deg: float, zoom: int) -> Tuple[int, int]:
         """Convert latitude and longitude to tile coordinates."""
         if zoom not in cls._zoom_cache:
-            cls._zoom_cache[zoom] = 2.0 ** zoom
+            cls._zoom_cache[zoom] = 2.0**zoom
         n = cls._zoom_cache[zoom]
 
         lat_rad = math.radians(lat_deg)
@@ -358,7 +352,7 @@ class MapRendererBase(ABC):
     def num2deg(cls, xtile: int, ytile: int, zoom: int) -> Tuple[float, float]:
         """Convert tile coordinates to latitude and longitude."""
         if zoom not in cls._zoom_cache:
-            cls._zoom_cache[zoom] = 2.0 ** zoom
+            cls._zoom_cache[zoom] = 2.0**zoom
         n = cls._zoom_cache[zoom]
 
         lon_deg = xtile / n * 360.0 - 180.0
@@ -386,23 +380,23 @@ class MapRendererBase(ABC):
 
     @abstractmethod
     def get_tiles_for_bounds(
-            self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
+        self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> List[MapTile]:
         """Return all tiles needed to cover the geographic bounds."""
 
     @abstractmethod
     def create_composite_map(
-            self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
+        self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> Image.Image:
         """Create a composite image from tiles for the bounding box."""
 
     def render_map_for_point(
-            self,
-            lat: float,
-            lon: float,
-            zoom: int,
-            marker_color: Tuple[int, int, int] = (255, 0, 0),
-            marker_size: int = 10,
+        self,
+        lat: float,
+        lon: float,
+        zoom: int,
+        marker_color: Tuple[int, int, int] = (255, 0, 0),
+        marker_size: int = 10,
     ) -> Optional[Image.Image]:
         """Render a map centered on the given coordinates with a marker."""
         geo_point = GeoPoint(lat=lat, lon=lon)
@@ -417,7 +411,7 @@ class MapRendererBase(ABC):
         result = tile.image.copy()
         draw = ImageDraw.Draw(result)
 
-        n = 2.0 ** zoom
+        n = 2.0**zoom
         lat_rad = math.radians(geo_point.lat)
 
         pixel_pos = Point(
@@ -438,13 +432,13 @@ class MapRendererBase(ABC):
         return result
 
     def render_from_composite(
-            self,
-            lat: float,
-            lon: float,
-            frame_width: int,
-            frame_height: int,
-            marker_color: Tuple[int, int, int] = (255, 0, 0),
-            marker_size: int = 10,
+        self,
+        lat: float,
+        lon: float,
+        frame_width: int,
+        frame_height: int,
+        marker_color: Tuple[int, int, int] = (255, 0, 0),
+        marker_size: int = 10,
     ) -> Optional[Image.Image]:
         """Render a map from the composite map centered on the given coordinates with a marker."""
         if self.composite_map is None or self.composite_map_info is None:
@@ -455,7 +449,7 @@ class MapRendererBase(ABC):
 
         geo_point = GeoPoint(lat=lat, lon=lon)
 
-        n = 2.0 ** zoom
+        n = 2.0**zoom
         lat_rad = math.radians(geo_point.lat)
         global_pixel = Point(
             x=int((geo_point.lon + 180.0) / 360.0 * n * 256),

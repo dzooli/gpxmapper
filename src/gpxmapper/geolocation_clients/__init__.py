@@ -27,9 +27,7 @@ except Exception:  # pragma: no cover
     AsyncGeopyNominatimClient = None  # type: ignore
 else:  # pragma: no cover
     __all__.append("AsyncGeopyNominatimClient")
-    GeolocationClientFactory.register_client(
-        "geopy-nominatim", AsyncGeopyNominatimClient
-    )
+    GeolocationClientFactory.register_client("geopy-nominatim", AsyncGeopyNominatimClient)
 
 # Register default httpx-based client
 GeolocationClientFactory.register_client("nominatim", AsyncNominatimClient)

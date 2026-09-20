@@ -35,10 +35,10 @@ class MapRendererAsync(MapRendererBase):
     """
 
     def __init__(
-            self,
-            tile_server: Optional[str] = None,
-            cache_dir: Optional[str] = None,
-            use_cache: bool = True,
+        self,
+        tile_server: Optional[str] = None,
+        cache_dir: Optional[str] = None,
+        use_cache: bool = True,
     ):
         resolved_server = tile_server if tile_server is not None else DEFAULT_TILE_SERVER
         super().__init__(resolved_server, cache_dir, use_cache)
@@ -56,9 +56,7 @@ class MapRendererAsync(MapRendererBase):
             "create_composite_map_async from async code instead."
         )
 
-    async def _fetch_tile_async(
-            self, client: httpx.AsyncClient, x: int, y: int, zoom: int
-    ) -> Optional[MapTile]:
+    async def _fetch_tile_async(self, client: httpx.AsyncClient, x: int, y: int, zoom: int) -> Optional[MapTile]:
         """Fetch a single tile using the given async client."""
         cached = self.open_cached_image(x, y, zoom)
         if cached is not None:
@@ -105,7 +103,7 @@ class MapRendererAsync(MapRendererBase):
             return await self._fetch_tile_async(client, x, y, zoom)
 
     def get_tiles_for_bounds(
-            self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
+        self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> List[MapTile]:
         """Get tiles for bounds using blocking I/O (via :func:`asyncio.run`).
 
@@ -115,7 +113,7 @@ class MapRendererAsync(MapRendererBase):
         return asyncio.run(self._get_tiles_for_bounds_async(min_lat, min_lon, max_lat, max_lon, zoom))
 
     async def _get_tiles_for_bounds_async(
-            self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
+        self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> List[MapTile]:
         tile_coords = self.build_tile_coords_for_bounds(min_lat, min_lon, max_lat, max_lon, zoom)
 
@@ -144,7 +142,7 @@ class MapRendererAsync(MapRendererBase):
         return tiles
 
     def create_composite_map(
-            self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
+        self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> Image.Image:
         """Create composite map using blocking I/O (via :func:`asyncio.run`).
 
@@ -154,7 +152,7 @@ class MapRendererAsync(MapRendererBase):
         return asyncio.run(self._create_composite_map_async(min_lat, min_lon, max_lat, max_lon, zoom))
 
     async def _create_composite_map_async(
-            self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
+        self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> Image.Image:
         min_tile, max_tile, dimensions = self.compute_composite_geometry(min_lat, min_lon, max_lat, max_lon, zoom)
 
@@ -195,13 +193,13 @@ class MapRendererAsync(MapRendererBase):
         return await self._fetch_single_tile_async(x, y, zoom)
 
     async def get_tiles_for_bounds_async(
-            self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
+        self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> List[MapTile]:
         """Fetch tiles for bounds (use from ``async`` code instead of :meth:`get_tiles_for_bounds`)."""
         return await self._get_tiles_for_bounds_async(min_lat, min_lon, max_lat, max_lon, zoom)
 
     async def create_composite_map_async(
-            self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
+        self, min_lat: float, min_lon: float, max_lat: float, max_lon: float, zoom: int
     ) -> Image.Image:
         """Build composite map (use from ``async`` code instead of :meth:`create_composite_map`)."""
         return await self._create_composite_map_async(min_lat, min_lon, max_lat, max_lon, zoom)
