@@ -1,5 +1,6 @@
 """Command for generating videos from GPX tracks."""
 
+from enum import Enum
 import logging
 from pathlib import Path
 from typing import Optional
@@ -11,6 +12,14 @@ from .utils import create_text_config, generate_video, parse_color
 from . import app
 
 logger = logging.getLogger(__name__)
+
+
+class TextAlignChoice(str, Enum):
+    """Text alignment options for video overlay text."""
+
+    LEFT = "left"
+    CENTER = "center"
+    RIGHT = "right"
 
 
 @app.command()
@@ -43,8 +52,11 @@ def generate(
         0.7, "--font-scale", "-fs", min=0.1, max=5.0, help="Font scale for all text (timestamp, title, captions)"
     ),
     title_text: Optional[str] = typer.Option(None, "--title", help="Optional text to display as a title on the video"),
-    text_align: str = typer.Option(
-        "left", "--text-align", "-ta", help="Alignment of all text (title, captions) (left, center, right)"
+    text_align: TextAlignChoice = typer.Option(
+        TextAlignChoice.LEFT,
+        "--text-align",
+        "-ta",
+        help="Alignment of all text (title, captions) (left, center, right)",
     ),
     no_timestamp: bool = typer.Option(False, "--no-timestamp", help="Disable timestamp visualization in the video"),
     captions: Optional[Path] = typer.Option(
@@ -125,7 +137,7 @@ def generate(
         text_config = create_text_config(
             font_scale=font_scale,
             title_text=title_text,
-            text_align=text_align,
+            text_align=str(text_align.value if hasattr(text_align, "value") else text_align),
             timestamp_color=f"{text_color_tuple[0]},{text_color_tuple[1]},{text_color_tuple[2]}",
             font_file=str(font_file) if font_file else None,
             no_timestamp=no_timestamp,

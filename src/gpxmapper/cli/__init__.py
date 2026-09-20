@@ -37,7 +37,7 @@ def _cli_root(
     from .log_level import apply_cli_log_level
 
     try:
-        apply_cli_log_level(log_level)
+        apply_cli_log_level(str(log_level))
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
 

@@ -1,8 +1,16 @@
 """Root logging level for the Typer CLI."""
 
-from __future__ import annotations
-
+from enum import Enum
 import logging
+
+
+class LogLevelChoice(str, Enum):
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    CRITICAL = "CRITICAL"
+
 
 _VALID = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
 _NOISY_HTTP_LOGGERS = ("httpx", "httpcore", "urllib3")
