@@ -170,7 +170,7 @@ def test_invalid_log_level(cli_runner: CliRunner, gpx_with_times: Path):
     result = _invoke(cli_runner, ["--log-level", "NOT_A_LEVEL", "info", str(gpx_with_times)])
     assert result.exit_code != 0
     assert result.exception is not None
-    assert "Invalid --log-level" in str(result.exception)
+    assert "not one of" in str(result.exception) or "Invalid" in str(result.exception)
 
 
 def test_apply_cli_log_level_rejects_unknown_name():

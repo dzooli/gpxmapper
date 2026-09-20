@@ -49,6 +49,7 @@ dependencies = [
     "opencv-python>=4.8.0",
     "pillow>=12.3.0",
     "requests>=2.31.0",
+    "trogon>=0.6.0",
     "typer>=0.9.0",
 ]
 
@@ -101,6 +102,8 @@ options = [
     "--hidden-import=PIL",
     "--hidden-import=numpy",
     "--hidden-import=zoneinfo",
+    "--collect-all=trogon",
+    "--collect-all=textual",
     "--specpath=.",
 ]
 
@@ -120,7 +123,6 @@ where = ["src"]
 # Then drop this [tool.uv.sources] entry and set e.g. pytest>=9.0.3 in dev dependencies.
 [tool.uv.sources]
 pytest = { git = "https://github.com/pytest-dev/pytest.git", rev = "76a9dd01e33162c54d6824f705e0f9eb2e24228a" }
-
 [tool.poe.tasks]
 test = "pytest"
 test-cov = "pytest --cov=gpxmapper"
@@ -130,4 +132,6 @@ format = "ruff format ."
 format-check = "ruff format --check ."
 check = ["lint", "format-check", "test"]
 build-exe = "python build_exe.py"
+tui = "gpxmapper tui"
 docs = "mkdocs build"
+

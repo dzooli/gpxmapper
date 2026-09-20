@@ -1,5 +1,6 @@
 """Command for generating videos from GPX tracks."""
 
+from enum import Enum
 import logging
 from pathlib import Path
 from typing import Optional
@@ -13,18 +14,37 @@ from . import app
 logger = logging.getLogger(__name__)
 
 
+class TextAlignChoice(str, Enum):
+    """Text alignment options for video overlay text."""
+
+    LEFT = "left"
+    CENTER = "center"
+    RIGHT = "right"
+
+
 @app.command()
 def generate(
+    # 1. File Arguments & Output
     gpx_file: Path = typer.Argument(
         ..., exists=True, file_okay=True, dir_okay=False, readable=True, help="Path to the input GPX file"
     ),
-    output_file: Path = typer.Option(
+    output_file: Optional[Path] = typer.Option(
         None, "--output", "-o", help="Path to the output video file (default: input filename with .mp4 extension)"
     ),
+    # 2. Video Dimensions & Timing
     duration: int = typer.Option(60, "--duration", "-d", min=1, help="Duration of the output video in seconds"),
     fps: int = typer.Option(30, "--fps", "-f", min=1, max=60, help="Frames per second for the output video"),
     width: int = typer.Option(320, "--width", "-w", min=128, help="Width of the output video in pixels"),
     height: int = typer.Option(320, "--height", "-h", min=128, help="Height of the output video in pixels"),
+    no_timestamp: bool = typer.Option(False, "--no-timestamp", help="Disable timestamp visualization in the video"),
+    timezone: Optional[str] = typer.Option(
+        None,
+        "--timezone",
+        "-tz",
+        help="Timezone to convert timestamps to. Must be a full timezone name (e.g., 'Europe/Budapest', 'US/Pacific'). "
+        "If not specified, timestamps are not converted.",
+    ),
+    # 3. Map & Marker Styling
     zoom: int = typer.Option(
         15, "--zoom", "-z", min=1, max=19, help="Zoom level for the map (1-19, higher is more detailed)"
     ),
@@ -32,35 +52,38 @@ def generate(
     marker_color: str = typer.Option(
         "255,0,0", "--marker-color", "-c", help="Color of the position marker as R,G,B (e.g., '255,0,0' for red)"
     ),
+    # 4. Typography & Text Overlay
+    title_text: Optional[str] = typer.Option(None, "--title", help="Optional text to display as a title on the video"),
+    font_file: Optional[Path] = typer.Option(
+        None,
+        "--font",
+        "-ff",
+        help="Path to a TrueType font file (.ttf) for text rendering",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+    ),
+    font_scale: float = typer.Option(
+        0.7, "--font-scale", "-fs", min=0.1, max=5.0, help="Font scale for all text (timestamp, title, captions)"
+    ),
     text_color: str = typer.Option(
         "0,0,0",
         "--text-color",
         "-tc",
         help="R,G,B color for all text overlays (timestamp, title, captions, scrolling, geolocation), 0-255 per channel (default 0,0,0 black).",
     ),
-    # Text rendering options
-    font_scale: float = typer.Option(
-        0.7, "--font-scale", "-fs", min=0.1, max=5.0, help="Font scale for all text (timestamp, title, captions)"
+    text_align: TextAlignChoice = typer.Option(
+        TextAlignChoice.LEFT,
+        "--text-align",
+        "-ta",
+        help="Alignment of all text (title, captions) (left, center, right)",
     ),
-    title_text: Optional[str] = typer.Option(None, "--title", help="Optional text to display as a title on the video"),
-    text_align: str = typer.Option(
-        "left", "--text-align", "-ta", help="Alignment of all text (title, captions) (left, center, right)"
-    ),
-    no_timestamp: bool = typer.Option(False, "--no-timestamp", help="Disable timestamp visualization in the video"),
+    # 5. Captions & Geolocation
     captions: Optional[Path] = typer.Option(
         None,
         "--captions",
         help="Path to a CSV file containing captions with timestamps in HH:MM:SS format (relative to the start of the video)",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-    ),
-    font_file: Optional[Path] = typer.Option(
-        None,
-        "--font",
-        "-ff",
-        help="Path to a TrueType font file (.ttf) for text rendering",
         exists=True,
         file_okay=True,
         dir_okay=False,
@@ -87,13 +110,6 @@ def generate(
         False,
         "--geolocate",
         help="Show reverse-geocoded addresses (Nominatim) instead of scrolling text. Conflicts with --scrolling-text / --scrolling-speed.",
-    ),
-    timezone: Optional[str] = typer.Option(
-        None,
-        "--timezone",
-        "-tz",
-        help="Timezone to convert timestamps to. Must be a full timezone name (e.g., 'Europe/Budapest', 'US/Pacific'). "
-        "If not specified, timestamps are not converted.",
     ),
 ):
     """Generate a video from a GPX track file.
@@ -125,7 +141,7 @@ def generate(
         text_config = create_text_config(
             font_scale=font_scale,
             title_text=title_text,
-            text_align=text_align,
+            text_align=str(text_align.value if hasattr(text_align, "value") else text_align),
             timestamp_color=f"{text_color_tuple[0]},{text_color_tuple[1]},{text_color_tuple[2]}",
             font_file=str(font_file) if font_file else None,
             no_timestamp=no_timestamp,
