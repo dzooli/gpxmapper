@@ -16,7 +16,7 @@ _VALID = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
 _NOISY_HTTP_LOGGERS = ("httpx", "httpcore", "urllib3")
 
 
-def apply_cli_log_level(log_level: str) -> None:
+def apply_cli_log_level(log_level: str | LogLevelChoice) -> None:
     """Set root and handler levels; keep third-party HTTP libraries quiet unless DEBUG.
 
     Args:
@@ -25,7 +25,8 @@ def apply_cli_log_level(log_level: str) -> None:
     Raises:
         ValueError: If ``log_level`` is not a valid level name.
     """
-    name = log_level.strip().upper()
+    val = log_level.value if isinstance(log_level, LogLevelChoice) else str(log_level)
+    name = val.strip().upper()
     if name not in _VALID:
         raise ValueError(f"Invalid --log-level {log_level!r}; use one of: {', '.join(sorted(_VALID))}.")
     level = getattr(logging, name)

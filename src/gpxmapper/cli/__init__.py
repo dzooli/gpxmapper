@@ -5,6 +5,8 @@ import sys
 
 import typer
 
+from .log_level import LogLevelChoice, apply_cli_log_level
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
@@ -24,8 +26,8 @@ app = typer.Typer(
 
 @app.callback()
 def _cli_root(
-    log_level: str = typer.Option(
-        "INFO",
+    log_level: LogLevelChoice = typer.Option(
+        LogLevelChoice.INFO,
         "--log-level",
         envvar="GPXMAPPER_LOG_LEVEL",
         help="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL). "
@@ -34,10 +36,8 @@ def _cli_root(
     ),
 ) -> None:
     """Shared CLI options (run before any subcommand)."""
-    from .log_level import apply_cli_log_level
-
     try:
-        apply_cli_log_level(str(log_level))
+        apply_cli_log_level(log_level)
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
 

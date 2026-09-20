@@ -84,6 +84,19 @@ async def test_trogon_renders_checkboxes_and_select_controls() -> None:
         assert len(selects) == 1
         assert selects[0].value == "left"
 
+        # Switch to root group to verify --log-level renders as Select dropdown
+        await trogon_app.screen._refresh_command_form(root_group)
+        await pilot.pause()
+        root_controls = list(trogon_app.query(ParameterControls))
+        log_level_ctrl = [
+            c
+            for c in root_controls
+            if any("--log-level" in n for n in (c.schema.name if isinstance(c.schema.name, list) else [c.schema.name]))
+        ][0]
+        log_selects = list(log_level_ctrl.query(Select))
+        assert len(log_selects) == 1
+        assert log_selects[0].value == "INFO"
+
 
 @pytest.mark.asyncio
 async def test_trogon_renders_range_sliders_for_bounded_numbers() -> None:
