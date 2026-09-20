@@ -35,17 +35,32 @@ class RangeSlider(Widget):
         max-height: 1;
         padding: 0;
         margin: 0;
-        border: none;
-        background: $primary;
+        border: none !important;
+        border-top: none !important;
+        border-bottom: none !important;
+        border-left: none !important;
+        border-right: none !important;
+        background: $surface-lighten-2;
         color: $text;
         text-style: bold;
     }
     RangeSlider Button:hover {
-        background: $primary-lighten-1;
+        border: none !important;
+        border-top: none !important;
+        border-bottom: none !important;
+        border-left: none !important;
+        border-right: none !important;
+        background: $accent-darken-1;
+        color: $background;
     }
     RangeSlider Button:focus {
+        border: none !important;
+        border-top: none !important;
+        border-bottom: none !important;
+        border-left: none !important;
+        border-right: none !important;
         background: $accent;
-        color: $text;
+        color: $background;
     }
     .slider-track {
         width: 28;
