@@ -33,7 +33,7 @@ class RangeSlider(Widget):
         content-align: center middle;
     }
     .slider-val {
-        width: 10;
+        width: 8;
         text-align: right;
         color: $accent;
         text-style: bold;
@@ -44,6 +44,7 @@ class RangeSlider(Widget):
         height: 1;
         padding: 0;
         margin: 0 1;
+        border: none;
     }
     """
 
@@ -72,9 +73,9 @@ class RangeSlider(Widget):
         return f"{int(self.value)}"
 
     def compose(self) -> ComposeResult:
-        yield Button("◀", classes="slider-btn btn-dec")
+        yield Button("<", classes="slider-btn btn-dec")
         yield Static(self._render_bar(24), classes="slider-track", id="track")
-        yield Button("▶", classes="slider-btn btn-inc")
+        yield Button(">", classes="slider-btn btn-inc")
         yield Static(self.value_str, classes="slider-val", id="val")
 
     def _render_bar(self, width: int = 24) -> Text:
