@@ -81,6 +81,27 @@ Preview locally: `./scripts/build-docs.sh serve` or `pwsh -File .\scripts\build-
 
 The wrappers set **`NO_MKDOCS_2_WARNING=1`** (Material for MkDocs — silences the MkDocs 2.0 banner) and **`DISABLE_MKDOCS_2_WARNING=true`** (pymdownx — silences the follow-up ProperDocs notice). **`pyproject.toml`** also pins **`mkdocs>=1.6,<2`** so dependency resolution does not upgrade into a future incompatible MkDocs major until the project explicitly changes that bound (after checking plugin support, or evaluating alternatives such as [ProperDocs](https://properdocs.org/) when they cover this plugin set).
 
+### Internal architecture
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant CLI as Typer CLI
+  participant TUI as Trogon TUI
+  participant Form as Textual command form
+  participant API as gpxmapper.api
+  User ->> CLI: gpxmapper tui
+  CLI ->> TUI: init_tui(app, name=gpxmapper)
+  TUI ->> Form: Render command controls
+  User ->> Form: Configure options
+  Form ->> TUI: Build command arguments
+  TUI ->> CLI: Execute selected command
+  CLI ->> API: Call API operation
+  API -->> CLI: Return result
+  CLI -->> TUI: Display command output
+  TUI -->> User: Show live result
+```
+
 ## Installation
 
 ### Option 1: Windows Standalone Executable
