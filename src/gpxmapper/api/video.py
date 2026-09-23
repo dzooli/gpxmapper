@@ -70,7 +70,7 @@ def generate_video(
         parser = GPXParser(str(gpx_path_obj))
         track_points = parser.parse()
     except Exception as exc:
-        logger.error("Failed to parse GPX file %s: %s", gpx_path_obj, exc)
+        logger.exception("Failed to parse GPX file %s: %s", gpx_path_obj, exc)
         raise GPXParseError(f"Failed to parse GPX file {gpx_path_obj}: {exc}") from exc
 
     if not track_points:
