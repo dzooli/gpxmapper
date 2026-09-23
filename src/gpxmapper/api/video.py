@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 from .config import create_text_config, parse_color
 from ..exceptions import GPXEmptyError, GPXMissingTimeError, GPXParseError, VideoGenerationError
@@ -15,79 +15,63 @@ from ..video_generator import VideoGenerator
 logger = logging.getLogger(__name__)
 
 
-def _resolve_video_config(
-        video_config: Optional[VideoConfig] = None,
-        duration: Optional[int] = None,
-        fps: Optional[int] = None,
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-) -> VideoConfig:
-    """Resolve VideoConfig from an optional instance and convenience keyword arguments."""
-    base = video_config or VideoConfig(fps=30, width=320, height=320, duration=60)
-    return VideoConfig(
-        fps=fps if fps is not None else base.fps,
-        width=width if width is not None else base.width,
-        height=height if height is not None else base.height,
-        duration=duration if duration is not None else base.duration,
+def _resolve_configs(
+        video_config: Optional[VideoConfig],
+        map_config: Optional[MapConfig],
+        text_config: Optional[TextConfig],
+        options: dict,
+) -> tuple[VideoConfig, MapConfig, TextConfig]:
+    """Resolve VideoConfig, MapConfig, and TextConfig from instances and convenience kwargs."""
+    v_base = video_config or VideoConfig(fps=30, width=320, height=320, duration=60)
+    v_conf = VideoConfig(
+        fps=options.get("fps") if options.get("fps") is not None else v_base.fps,
+        width=options.get("width") if options.get("width") is not None else v_base.width,
+        height=options.get("height") if options.get("height") is not None else v_base.height,
+        duration=options.get("duration") if options.get("duration") is not None else v_base.duration,
     )
 
-
-def _resolve_map_config(
-        map_config: Optional[MapConfig] = None,
-        zoom: Optional[int] = None,
-        marker_size: Optional[int] = None,
-        marker_color: Optional[str | Tuple[int, int, int]] = None,
-) -> MapConfig:
-    """Resolve MapConfig from an optional instance and convenience keyword arguments."""
-    base = map_config or MapConfig(zoom=15, marker_size=10, marker_color=(255, 0, 0))
-    color = parse_color(marker_color) if marker_color is not None else base.marker_color
-    return MapConfig(
-        zoom=zoom if zoom is not None else base.zoom,
-        marker_size=marker_size if marker_size is not None else base.marker_size,
-        marker_color=color,
+    m_base = map_config or MapConfig(zoom=15, marker_size=10, marker_color=(255, 0, 0))
+    raw_color = options.get("marker_color")
+    m_color = parse_color(raw_color) if raw_color is not None else m_base.marker_color
+    m_conf = MapConfig(
+        zoom=options.get("zoom") if options.get("zoom") is not None else m_base.zoom,
+        marker_size=options.get("marker_size") if options.get("marker_size") is not None else m_base.marker_size,
+        marker_color=m_color,
     )
 
+    t_base = text_config or TextConfig()
+    custom_title = options.get("title") if options.get("title") is not None else options.get("title_text")
+    custom_color = (
+        options.get("text_color") if options.get("text_color") is not None else options.get("timestamp_color")
+    )
 
-def _resolve_text_config(
-        text_config: Optional[TextConfig] = None,
-        title: Optional[str] = None,
-        title_text: Optional[str] = None,
-        text_color: Optional[str | Tuple[int, int, int]] = None,
-        timestamp_color: Optional[str | Tuple[int, int, int]] = None,
-        font_scale: Optional[float] = None,
-        text_align: Optional[str] = None,
-        font_file: Optional[str] = None,
-        no_timestamp: Optional[bool] = None,
-        show_timestamp: Optional[bool] = None,
-        scrolling_text_file: Optional[str] = None,
-        scrolling_speed: Optional[float] = None,
-        timezone: Optional[str] = None,
-        geolocate: Optional[bool] = None,
-) -> TextConfig:
-    """Resolve TextConfig from an optional instance and convenience keyword arguments."""
-    base = text_config or TextConfig()
-    custom_title = title if title is not None else title_text
-    custom_color = text_color if text_color is not None else timestamp_color
-
-    if no_timestamp is not None:
-        disabled_ts = no_timestamp
-    elif show_timestamp is not None:
-        disabled_ts = not show_timestamp
+    if options.get("no_timestamp") is not None:
+        disabled_ts = bool(options["no_timestamp"])
+    elif options.get("show_timestamp") is not None:
+        disabled_ts = not bool(options["show_timestamp"])
     else:
-        disabled_ts = not base.show_timestamp
+        disabled_ts = not t_base.show_timestamp
 
-    return create_text_config(
-        font_scale=font_scale if font_scale is not None else base.font_scale,
-        title_text=custom_title if custom_title is not None else base.title_text,
-        text_align=text_align if text_align is not None else base.text_align,
-        timestamp_color=custom_color if custom_color is not None else base.timestamp_color,
-        font_file=font_file if font_file is not None else base.font_file,
+    t_conf = create_text_config(
+        font_scale=options.get("font_scale") if options.get("font_scale") is not None else t_base.font_scale,
+        title_text=custom_title if custom_title is not None else t_base.title_text,
+        text_align=options.get("text_align") if options.get("text_align") is not None else t_base.text_align,
+        timestamp_color=custom_color if custom_color is not None else t_base.timestamp_color,
+        font_file=options.get("font_file") if options.get("font_file") is not None else t_base.font_file,
         no_timestamp=disabled_ts,
-        scrolling_text_file=scrolling_text_file if scrolling_text_file is not None else base.scrolling_text_file,
-        scrolling_speed=scrolling_speed if scrolling_speed is not None else base.scrolling_speed,
-        timezone=timezone if timezone is not None else base.timezone,
-        geolocate=geolocate if geolocate is not None else base.geolocate,
+        scrolling_text_file=(
+            options.get("scrolling_text_file")
+            if options.get("scrolling_text_file") is not None
+            else t_base.scrolling_text_file
+        ),
+        scrolling_speed=(
+            options.get("scrolling_speed") if options.get("scrolling_speed") is not None else t_base.scrolling_speed
+        ),
+        timezone=options.get("timezone") if options.get("timezone") is not None else t_base.timezone,
+        geolocate=options.get("geolocate") if options.get("geolocate") is not None else t_base.geolocate,
     )
+
+    return v_conf, m_conf, t_conf
 
 
 def generate_video(
@@ -100,26 +84,7 @@ def generate_video(
         *,
         gpx_path: Optional[Path | str] = None,
         output_path: Optional[Path | str] = None,
-        duration: Optional[int] = None,
-        fps: Optional[int] = None,
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-        zoom: Optional[int] = None,
-        marker_size: Optional[int] = None,
-        marker_color: Optional[str | Tuple[int, int, int]] = None,
-        title: Optional[str] = None,
-        title_text: Optional[str] = None,
-        text_color: Optional[str | Tuple[int, int, int]] = None,
-        timestamp_color: Optional[str | Tuple[int, int, int]] = None,
-        font_scale: Optional[float] = None,
-        text_align: Optional[str] = None,
-        font_file: Optional[str] = None,
-        no_timestamp: Optional[bool] = None,
-        show_timestamp: Optional[bool] = None,
-        scrolling_text_file: Optional[str] = None,
-        scrolling_speed: Optional[float] = None,
-        timezone: Optional[str] = None,
-        geolocate: Optional[bool] = None,
+        **kwargs,
 ) -> str:
     """Generate a video visualizing a GPX track on a map.
 
@@ -136,26 +101,7 @@ def generate_video(
         captions: Optional path to a CSV file with timestamped captions.
         gpx_path: Alias for `gpx_file`.
         output_path: Alias for `output_file`.
-        duration: Video duration in seconds (convenience argument for VideoConfig).
-        fps: Frames per second (convenience argument for VideoConfig).
-        width: Video width in pixels (convenience argument for VideoConfig).
-        height: Video height in pixels (convenience argument for VideoConfig).
-        zoom: Map zoom level 1-19 (convenience argument for MapConfig).
-        marker_size: Marker size in pixels (convenience argument for MapConfig).
-        marker_color: Marker color as 'R,G,B' or (R, G, B) tuple (convenience argument for MapConfig).
-        title: Title overlay text (alias for `title_text`).
-        title_text: Title overlay text (convenience argument for TextConfig).
-        text_color: Text overlay color as 'R,G,B' or (R, G, B) tuple (alias for `timestamp_color`).
-        timestamp_color: Text overlay color (convenience argument for TextConfig).
-        font_scale: Font scaling factor (convenience argument for TextConfig).
-        text_align: Text alignment 'left', 'center', or 'right' (convenience argument for TextConfig).
-        font_file: Path to TrueType font file (convenience argument for TextConfig).
-        no_timestamp: Disable timestamp display if True (convenience argument for TextConfig).
-        show_timestamp: Show timestamp display if True (convenience argument for TextConfig).
-        scrolling_text_file: Path to scrolling text file (convenience argument for TextConfig).
-        scrolling_speed: Scrolling speed in pixels per frame (convenience argument for TextConfig).
-        timezone: Timezone for timestamps (convenience argument for TextConfig).
-        geolocate: Enable reverse-geocoded location line overlay if True.
+        **kwargs: Convenience keyword overrides for video, map, and text configurations.
 
     Returns:
         String path to the generated output video file.
@@ -176,35 +122,7 @@ def generate_video(
     gpx_path_obj = Path(target_gpx)
     out_path = Path(target_out) if target_out is not None else gpx_path_obj.with_suffix(".mp4")
 
-    v_config = _resolve_video_config(
-        video_config=video_config,
-        duration=duration,
-        fps=fps,
-        width=width,
-        height=height,
-    )
-    m_config = _resolve_map_config(
-        map_config=map_config,
-        zoom=zoom,
-        marker_size=marker_size,
-        marker_color=marker_color,
-    )
-    t_config = _resolve_text_config(
-        text_config=text_config,
-        title=title,
-        title_text=title_text,
-        text_color=text_color,
-        timestamp_color=timestamp_color,
-        font_scale=font_scale,
-        text_align=text_align,
-        font_file=font_file,
-        no_timestamp=no_timestamp,
-        show_timestamp=show_timestamp,
-        scrolling_text_file=scrolling_text_file,
-        scrolling_speed=scrolling_speed,
-        timezone=timezone,
-        geolocate=geolocate,
-    )
+    v_config, m_config, t_config = _resolve_configs(video_config, map_config, text_config, kwargs)
 
     logger.info("Parsing GPX file: %s", gpx_path_obj)
     try:
