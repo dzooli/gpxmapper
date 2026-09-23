@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 _VALID_ALIGNMENTS = frozenset({"left", "center", "right"})
 
 
-def parse_color(color_str: str) -> Tuple[int, int, int]:
-    """Parse a color string in the format 'R,G,B' into a tuple of 3 integers (0-255).
+def parse_color(color_str: str | Tuple[int, int, int]) -> Tuple[int, int, int]:
+    """Parse a color string in format 'R,G,B' or (R, G, B) tuple into a tuple of 3 integers (0-255).
 
     Args:
-        color_str: Color string in format 'R,G,B'.
+        color_str: Color string in format 'R,G,B' or tuple (R, G, B).
 
     Returns:
         Tuple of (R, G, B) integer values.
@@ -25,15 +25,21 @@ def parse_color(color_str: str) -> Tuple[int, int, int]:
     Raises:
         ConfigurationError: If format is invalid or values outside 0-255 range.
     """
-    try:
-        parts = [int(p.strip()) for p in color_str.split(",")]
-        if len(parts) != 3 or not all(0 <= c <= 255 for c in parts):
-            raise ValueError("Values must be 3 integers between 0 and 255")
-        return parts[0], parts[1], parts[2]
-    except Exception as exc:
-        raise ConfigurationError(
-            f"Text overlay color must be in format 'R,G,B' with values 0-255 for each channel, got: {color_str!r}"
-        ) from exc
+    if isinstance(color_str, (tuple, list)) and len(color_str) == 3:
+        if not all(isinstance(c, int) and 0 <= c <= 255 for c in color_str):
+            raise ConfigurationError(f"RGB color channel values must be between 0 and 255, got: {color_str}")
+        return int(color_str[0]), int(color_str[1]), int(color_str[2])
+    if isinstance(color_str, str):
+        try:
+            parts = [int(p.strip()) for p in color_str.split(",")]
+            if len(parts) != 3 or not all(0 <= c <= 255 for c in parts):
+                raise ValueError("Values must be 3 integers between 0 and 255")
+            return parts[0], parts[1], parts[2]
+        except Exception as exc:
+            raise ConfigurationError(
+                f"Text overlay color must be in format 'R,G,B' with values 0-255 for each channel, got: {color_str!r}"
+            ) from exc
+    raise ConfigurationError(f"timestamp_color must be 'R,G,B' string or (R, G, B) tuple, got: {type(color_str)}")
 
 
 def create_text_config(
@@ -68,16 +74,7 @@ def create_text_config(
     Raises:
         ConfigurationError: If any configuration value is invalid.
     """
-    if isinstance(timestamp_color, str):
-        color_tuple = parse_color(timestamp_color)
-    elif isinstance(timestamp_color, tuple) and len(timestamp_color) == 3:
-        if not all(0 <= c <= 255 for c in timestamp_color):
-            raise ConfigurationError(f"RGB color channel values must be between 0 and 255, got: {timestamp_color}")
-        color_tuple = timestamp_color
-    else:
-        raise ConfigurationError(
-            f"timestamp_color must be 'R,G,B' string or (R, G, B) tuple, got: {type(timestamp_color)}"
-        )
+    color_tuple = parse_color(timestamp_color)
 
     norm_align = text_align.lower().strip()
     if norm_align not in _VALID_ALIGNMENTS:

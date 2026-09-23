@@ -193,6 +193,101 @@ def test_generate_video_failure_wraps_exception(gpx_with_times: Path, tmp_path: 
         generate_video(gpx_file=gpx_with_times, output_file=out)
 
 
+def test_generate_video_convenience_kwargs_example(gpx_with_times: Path, tmp_path: Path, mocker):
+    """Test the exact documented example from README.md with convenience kwargs."""
+    out = tmp_path / "output.mp4"
+    mock_gen_class = mocker.patch("gpxmapper.api.video.VideoGenerator")
+    mock_gen_instance = mock_gen_class.return_value
+    mock_gen_instance.generate_video.return_value = str(out)
+
+    result = generate_video(
+        gpx_path=gpx_with_times,
+        output_path=out,
+        duration=60,
+        fps=30,
+        width=1280,
+        height=720,
+        zoom=15,
+        marker_color=(255, 0, 0),
+        title="Morning Ride",
+        text_color=(255, 255, 255),
+    )
+
+    assert result == str(out)
+    mock_gen_class.assert_called_once()
+    _, kwargs = mock_gen_class.call_args
+    assert kwargs["output_path"] == str(out)
+    assert kwargs["fps"] == 30
+    assert kwargs["resolution"] == (1280, 720)
+    assert kwargs["zoom_level"] == 15
+    assert kwargs["marker_color"] == (255, 0, 0)
+    assert kwargs["marker_size"] == 10
+    assert kwargs["text_config"].title_text == "Morning Ride"
+    assert kwargs["text_config"].timestamp_color == (255, 255, 255)
+    mock_gen_instance.generate_video.assert_called_once_with(mocker.ANY, 60)
+
+
+def test_generate_video_missing_gpx_path_raises():
+    with pytest.raises(ValueError, match="A GPX file path must be provided"):
+        generate_video()
+
+
+def test_generate_video_convenience_string_colors_and_options(gpx_with_times: Path, tmp_path: Path, mocker):
+    out = tmp_path / "output.mp4"
+    mock_gen_class = mocker.patch("gpxmapper.api.video.VideoGenerator")
+    mock_gen_instance = mock_gen_class.return_value
+    mock_gen_instance.generate_video.return_value = str(out)
+
+    result = generate_video(
+        gpx_file=gpx_with_times,
+        output_file=out,
+        marker_color="0,128,255",
+        marker_size=12,
+        title_text="Custom Title",
+        text_color="10,20,30",
+        font_scale=1.2,
+        text_align="center",
+        no_timestamp=True,
+    )
+
+    assert result == str(out)
+    _, kwargs = mock_gen_class.call_args
+    assert kwargs["marker_color"] == (0, 128, 255)
+    assert kwargs["marker_size"] == 12
+    assert kwargs["text_config"].title_text == "Custom Title"
+    assert kwargs["text_config"].timestamp_color == (10, 20, 30)
+    assert kwargs["text_config"].font_scale == 1.2
+    assert kwargs["text_config"].text_align == "center"
+    assert kwargs["text_config"].show_timestamp is False
+
+
+def test_generate_video_config_with_keyword_overrides(gpx_with_times: Path, tmp_path: Path, mocker):
+    out = tmp_path / "output.mp4"
+    mock_gen_class = mocker.patch("gpxmapper.api.video.VideoGenerator")
+    mock_gen_instance = mock_gen_class.return_value
+    mock_gen_instance.generate_video.return_value = str(out)
+
+    result = generate_video(
+        gpx_file=gpx_with_times,
+        output_file=out,
+        video_config=VideoConfig(fps=24, width=640, height=480, duration=10),
+        map_config=MapConfig(zoom=10, marker_size=5, marker_color=(0, 0, 0)),
+        text_config=create_text_config(title_text="Base Title", font_scale=0.8),
+        duration=45,
+        zoom=14,
+        title="Overridden Title",
+    )
+
+    assert result == str(out)
+    _, kwargs = mock_gen_class.call_args
+    assert kwargs["fps"] == 24
+    assert kwargs["resolution"] == (640, 480)
+    assert kwargs["zoom_level"] == 14
+    assert kwargs["text_config"].title_text == "Overridden Title"
+    assert kwargs["text_config"].font_scale == 0.8
+    mock_gen_instance.generate_video.assert_called_once_with(mocker.ANY, 45)
+
+
 # --- Cache Services ---
 
 
