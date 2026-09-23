@@ -23,18 +23,12 @@ def _resolve_video_config(
         height: Optional[int] = None,
 ) -> VideoConfig:
     """Resolve VideoConfig from an optional instance and convenience keyword arguments."""
-    if video_config is not None:
-        return VideoConfig(
-            fps=fps if fps is not None else video_config.fps,
-            width=width if width is not None else video_config.width,
-            height=height if height is not None else video_config.height,
-            duration=duration if duration is not None else video_config.duration,
-        )
+    base = video_config or VideoConfig(fps=30, width=320, height=320, duration=60)
     return VideoConfig(
-        fps=fps if fps is not None else 30,
-        width=width if width is not None else 320,
-        height=height if height is not None else 320,
-        duration=duration if duration is not None else 60,
+        fps=fps if fps is not None else base.fps,
+        width=width if width is not None else base.width,
+        height=height if height is not None else base.height,
+        duration=duration if duration is not None else base.duration,
     )
 
 
@@ -45,17 +39,12 @@ def _resolve_map_config(
         marker_color: Optional[str | Tuple[int, int, int]] = None,
 ) -> MapConfig:
     """Resolve MapConfig from an optional instance and convenience keyword arguments."""
-    parsed_color = parse_color(marker_color) if marker_color is not None else None
-    if map_config is not None:
-        return MapConfig(
-            zoom=zoom if zoom is not None else map_config.zoom,
-            marker_size=marker_size if marker_size is not None else map_config.marker_size,
-            marker_color=parsed_color if parsed_color is not None else map_config.marker_color,
-        )
+    base = map_config or MapConfig(zoom=15, marker_size=10, marker_color=(255, 0, 0))
+    color = parse_color(marker_color) if marker_color is not None else base.marker_color
     return MapConfig(
-        zoom=zoom if zoom is not None else 15,
-        marker_size=marker_size if marker_size is not None else 10,
-        marker_color=parsed_color if parsed_color is not None else (255, 0, 0),
+        zoom=zoom if zoom is not None else base.zoom,
+        marker_size=marker_size if marker_size is not None else base.marker_size,
+        marker_color=color,
     )
 
 
@@ -76,48 +65,28 @@ def _resolve_text_config(
         geolocate: Optional[bool] = None,
 ) -> TextConfig:
     """Resolve TextConfig from an optional instance and convenience keyword arguments."""
-    effective_title = title if title is not None else title_text
-    effective_color = text_color if text_color is not None else timestamp_color
-    effective_no_ts = (
-        no_timestamp if no_timestamp is not None else (not show_timestamp if show_timestamp is not None else None)
-    )
+    base = text_config or TextConfig()
+    custom_title = title if title is not None else title_text
+    custom_color = text_color if text_color is not None else timestamp_color
 
-    if text_config is not None:
-        t_title = effective_title if effective_title is not None else text_config.title_text
-        t_color = parse_color(effective_color) if effective_color is not None else text_config.timestamp_color
-        t_scale = font_scale if font_scale is not None else text_config.font_scale
-        t_align = text_align if text_align is not None else text_config.text_align
-        t_font = font_file if font_file is not None else text_config.font_file
-        t_show_ts = not effective_no_ts if effective_no_ts is not None else text_config.show_timestamp
-        t_scroll_file = scrolling_text_file if scrolling_text_file is not None else text_config.scrolling_text_file
-        t_scroll_speed = scrolling_speed if scrolling_speed is not None else text_config.scrolling_speed
-        t_tz = timezone if timezone is not None else text_config.timezone
-        t_geolocate = geolocate if geolocate is not None else text_config.geolocate
-
-        return create_text_config(
-            font_scale=t_scale,
-            title_text=t_title,
-            text_align=t_align,
-            timestamp_color=t_color,
-            font_file=t_font,
-            no_timestamp=not t_show_ts,
-            scrolling_text_file=t_scroll_file,
-            scrolling_speed=t_scroll_speed,
-            timezone=t_tz,
-            geolocate=t_geolocate,
-        )
+    if no_timestamp is not None:
+        disabled_ts = no_timestamp
+    elif show_timestamp is not None:
+        disabled_ts = not show_timestamp
+    else:
+        disabled_ts = not base.show_timestamp
 
     return create_text_config(
-        font_scale=font_scale if font_scale is not None else 0.7,
-        title_text=effective_title,
-        text_align=text_align if text_align is not None else "left",
-        timestamp_color=effective_color if effective_color is not None else (0, 0, 0),
-        font_file=font_file,
-        no_timestamp=effective_no_ts if effective_no_ts is not None else False,
-        scrolling_text_file=scrolling_text_file,
-        scrolling_speed=scrolling_speed,
-        timezone=timezone,
-        geolocate=geolocate if geolocate is not None else False,
+        font_scale=font_scale if font_scale is not None else base.font_scale,
+        title_text=custom_title if custom_title is not None else base.title_text,
+        text_align=text_align if text_align is not None else base.text_align,
+        timestamp_color=custom_color if custom_color is not None else base.timestamp_color,
+        font_file=font_file if font_file is not None else base.font_file,
+        no_timestamp=disabled_ts,
+        scrolling_text_file=scrolling_text_file if scrolling_text_file is not None else base.scrolling_text_file,
+        scrolling_speed=scrolling_speed if scrolling_speed is not None else base.scrolling_speed,
+        timezone=timezone if timezone is not None else base.timezone,
+        geolocate=geolocate if geolocate is not None else base.geolocate,
     )
 
 
