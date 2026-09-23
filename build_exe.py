@@ -4,6 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Build a standalone executable for the gpxmapper application using PyInstaller.
+#
 # Try to import tomli for TOML parsing
 try:
     import tomli
