@@ -17,6 +17,10 @@ from gpxmapper.api import (
     get_gpx_info,
     get_tile_cache_info,
     parse_color,
+    resolve_configs,
+    resolve_map_config,
+    resolve_text_config,
+    resolve_video_config,
 )
 from gpxmapper.exceptions import (
     ConfigurationError,
@@ -116,6 +120,27 @@ def test_create_text_config_invalid_alignment():
 def test_create_text_config_geolocate_conflict():
     with pytest.raises(ConfigurationError, match="geolocate cannot be enabled together with"):
         create_text_config(geolocate=True, scrolling_text_file="some_file.txt")
+
+
+def test_resolve_configs_direct_helpers():
+    v = resolve_video_config(options={"fps": 60, "duration": 120})
+    assert v.fps == 60
+    assert v.duration == 120
+    assert v.width == 320
+
+    m = resolve_map_config(options={"zoom": 17, "marker_color": "0,255,0"})
+    assert m.zoom == 17
+    assert m.marker_color == (0, 255, 0)
+
+    t = resolve_text_config(options={"title": "My Track", "text_color": "1,2,3", "show_timestamp": True})
+    assert t.title_text == "My Track"
+    assert t.timestamp_color == (1, 2, 3)
+    assert t.show_timestamp is True
+
+    vc, mc, tc = resolve_configs(options={"fps": 24, "zoom": 10, "title": "Trip"})
+    assert vc.fps == 24
+    assert mc.zoom == 10
+    assert tc.title_text == "Trip"
 
 
 # --- GPX Info ---

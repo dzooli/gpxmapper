@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Tuple
+from dataclasses import replace
+from typing import Any, Optional, Tuple
 
 from ..exceptions import ConfigurationError
-from ..models import TextConfig
+from ..models import MapConfig, TextConfig, VideoConfig
 
 logger = logging.getLogger(__name__)
 
@@ -94,4 +95,72 @@ def create_text_config(
         scrolling_speed=scrolling_speed,
         timezone=timezone,
         geolocate=geolocate,
+    )
+
+
+def _opt_value(options: dict, keys: tuple[str, ...], default: Any) -> Any:
+    for key in keys:
+        val = options.get(key)
+        if val is not None:
+            return val
+    return default
+
+
+def _resolve_no_timestamp(options: dict, default_show: bool) -> bool:
+    if options.get("no_timestamp") is not None:
+        return bool(options["no_timestamp"])
+    if options.get("show_timestamp") is not None:
+        return not bool(options["show_timestamp"])
+    return not default_show
+
+
+def resolve_video_config(config: Optional[VideoConfig] = None, options: Optional[dict] = None) -> VideoConfig:
+    """Resolve VideoConfig from an optional instance and keyword arguments."""
+    opts = options or {}
+    base = config or VideoConfig(fps=30, width=320, height=320, duration=60)
+    overrides = {k: opts[k] for k in ("fps", "width", "height", "duration") if opts.get(k) is not None}
+    return replace(base, **overrides) if overrides else base
+
+
+def resolve_map_config(config: Optional[MapConfig] = None, options: Optional[dict] = None) -> MapConfig:
+    """Resolve MapConfig from an optional instance and keyword arguments."""
+    opts = options or {}
+    base = config or MapConfig(zoom=15, marker_size=10, marker_color=(255, 0, 0))
+    zoom = _opt_value(opts, ("zoom",), base.zoom)
+    marker_size = _opt_value(opts, ("marker_size",), base.marker_size)
+    raw_color = opts.get("marker_color")
+    marker_color = parse_color(raw_color) if raw_color is not None else base.marker_color
+    return MapConfig(zoom=zoom, marker_size=marker_size, marker_color=marker_color)
+
+
+def resolve_text_config(config: Optional[TextConfig] = None, options: Optional[dict] = None) -> TextConfig:
+    """Resolve TextConfig from an optional instance and keyword arguments."""
+    opts = options or {}
+    base = config or TextConfig()
+    return create_text_config(
+        font_scale=_opt_value(opts, ("font_scale",), base.font_scale),
+        title_text=_opt_value(opts, ("title", "title_text"), base.title_text),
+        text_align=_opt_value(opts, ("text_align",), base.text_align),
+        timestamp_color=_opt_value(opts, ("text_color", "timestamp_color"), base.timestamp_color),
+        font_file=_opt_value(opts, ("font_file",), base.font_file),
+        no_timestamp=_resolve_no_timestamp(opts, base.show_timestamp),
+        scrolling_text_file=_opt_value(opts, ("scrolling_text_file",), base.scrolling_text_file),
+        scrolling_speed=_opt_value(opts, ("scrolling_speed",), base.scrolling_speed),
+        timezone=_opt_value(opts, ("timezone",), base.timezone),
+        geolocate=_opt_value(opts, ("geolocate",), base.geolocate),
+    )
+
+
+def resolve_configs(
+        video_config: Optional[VideoConfig] = None,
+        map_config: Optional[MapConfig] = None,
+        text_config: Optional[TextConfig] = None,
+        options: Optional[dict] = None,
+) -> tuple[VideoConfig, MapConfig, TextConfig]:
+    """Resolve VideoConfig, MapConfig, and TextConfig from instances and convenience kwargs."""
+    opts = options or {}
+    return (
+        resolve_video_config(video_config, opts),
+        resolve_map_config(map_config, opts),
+        resolve_text_config(text_config, opts),
     )
