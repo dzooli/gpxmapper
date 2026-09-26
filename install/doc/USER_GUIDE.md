@@ -26,6 +26,7 @@ gpxmapper.exe generate C:\path\to\track.gpx
 ## Features (short)
 
 - Map video from GPX: moving marker, timestamps, optional title, captions CSV, scrolling text, or **reverse-geolocation labels** (`--geolocate`).
+- **Interactive TUI** — launch with `gpxmapper.exe tui` (or `gpxmapper tui`) for a terminal interface featuring interactive range sliders, checkboxes, and categorized option forms.
 - **`--text-color` / `-tc`** — same `R,G,B` format as **`--marker-color`** for all on-screen text.
 - Tile cache and **`clear-cache`** / **`clear-cache --geolocation`** (see `README.md`).
 
