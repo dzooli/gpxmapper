@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from .config import resolve_configs
 from ..exceptions import GPXEmptyError, GPXMissingTimeError, GPXParseError, VideoGenerationError
 from ..gpx_parser import GPXParser
 from ..models import MapConfig, TextConfig, VideoConfig
@@ -15,56 +16,72 @@ logger = logging.getLogger(__name__)
 
 
 def generate_video(
-    gpx_file: Path | str,
+        gpx_file: Optional[Path | str] = None,
     output_file: Optional[Path | str] = None,
     video_config: Optional[VideoConfig] = None,
     map_config: Optional[MapConfig] = None,
     text_config: Optional[TextConfig] = None,
     captions: Optional[Path | str] = None,
+        *,
+        gpx_path: Optional[Path | str] = None,
+        output_path: Optional[Path | str] = None,
+        **kwargs,
 ) -> str:
     """Generate a video visualizing a GPX track on a map.
 
+    Supports either explicit configuration objects (`video_config`, `map_config`, `text_config`)
+    or direct convenience keyword arguments (`duration`, `fps`, `width`, `height`, `zoom`,
+    `marker_color`, `title`, `text_color`, etc.).
+
     Args:
-        gpx_file: Path to the input GPX file.
+        gpx_file: Path to the input GPX file (positional or keyword).
         output_file: Path for the generated video file. If None, defaults to the GPX filename with .mp4 suffix.
         video_config: Configuration for video (fps, width, height, duration).
         map_config: Configuration for map rendering (zoom, marker size, marker color).
         text_config: Configuration for text overlays (title, captions, fonts, timestamps, geolocate).
         captions: Optional path to a CSV file with timestamped captions.
+        gpx_path: Alias for `gpx_file`.
+        output_path: Alias for `output_file`.
+        **kwargs: Convenience keyword overrides for video, map, and text configurations.
 
     Returns:
         String path to the generated output video file.
 
     Raises:
+        ValueError: If neither `gpx_file` nor `gpx_path` is provided.
+        ConfigurationError: If any configuration option is invalid.
         GPXParseError: If parsing the GPX file fails.
         GPXEmptyError: If no track points are present in the GPX file.
         GPXMissingTimeError: If track points do not contain timestamp data.
         VideoGenerationError: If rendering or encoding the video fails.
     """
-    gpx_path = Path(gpx_file)
-    out_path = Path(output_file) if output_file is not None else gpx_path.with_suffix(".mp4")
+    target_gpx = gpx_file if gpx_file is not None else gpx_path
+    if target_gpx is None:
+        raise ValueError("A GPX file path must be provided (gpx_file or gpx_path)")
 
-    v_config = video_config or VideoConfig(fps=30, width=320, height=320, duration=60)
-    m_config = map_config or MapConfig(zoom=15, marker_size=10, marker_color=(255, 0, 0))
-    t_config = text_config or TextConfig()
+    target_out = output_file if output_file is not None else output_path
+    gpx_path_obj = Path(target_gpx)
+    out_path = Path(target_out) if target_out is not None else gpx_path_obj.with_suffix(".mp4")
 
-    logger.info("Parsing GPX file: %s", gpx_path)
+    v_config, m_config, t_config = resolve_configs(video_config, map_config, text_config, kwargs)
+
+    logger.info("Parsing GPX file: %s", gpx_path_obj)
     try:
-        parser = GPXParser(str(gpx_path))
+        parser = GPXParser(str(gpx_path_obj))
         track_points = parser.parse()
     except Exception as exc:
-        logger.error("Failed to parse GPX file %s: %s", gpx_path, exc)
-        raise GPXParseError(f"Failed to parse GPX file {gpx_path}: {exc}") from exc
+        logger.exception("Failed to parse GPX file %s: %s", gpx_path_obj, exc)
+        raise GPXParseError(f"Failed to parse GPX file {gpx_path_obj}: {exc}") from exc
 
     if not track_points:
-        logger.error("No track points found in GPX file: %s", gpx_path)
-        raise GPXEmptyError(f"No track points found in GPX file: {gpx_path}")
+        logger.error("No track points found in GPX file: %s", gpx_path_obj)
+        raise GPXEmptyError(f"No track points found in GPX file: {gpx_path_obj}")
 
     points_with_time = [p for p in track_points if p.time is not None]
     if not points_with_time:
-        logger.error("GPX file %s lacks timestamps required for video generation", gpx_path)
+        logger.error("GPX file %s lacks timestamps required for video generation", gpx_path_obj)
         raise GPXMissingTimeError(
-            f"GPX file {gpx_path} doesn't contain time data, which is required for video generation"
+            f"GPX file {gpx_path_obj} doesn't contain time data, which is required for video generation"
         )
 
     start_time, end_time = parser.get_time_bounds()

@@ -18,7 +18,7 @@ A command-line tool that generates videos from GPX tracks, showing the route on 
 - Customize text alignment and font scale
 - Customize the font of text overlays (TTF only)
 - Cache map tiles for faster rendering (default directory is OS-specific; see **Map tile cache** below)
-- Interactive Terminal User Interface (TUI) powered by Trogon and Textual (`gpxmapper tui`)
+- Interactive Terminal User Interface (TUI) powered by Trogon and Textual (`gpxmapper tui`) featuring categorized option groups, interactive range sliders, checkbox toggles, and project metadata modal
 - Clear cache to free up disk space via `gpxmapper clear-cache`
 - Performance optimizations:
   - Parallel frame generation using multiple threads
@@ -80,6 +80,27 @@ pwsh -File .\scripts\build-docs.ps1 build
 Preview locally: `./scripts/build-docs.sh serve` or `pwsh -File .\scripts\build-docs.ps1 serve`.
 
 The wrappers set **`NO_MKDOCS_2_WARNING=1`** (Material for MkDocs — silences the MkDocs 2.0 banner) and **`DISABLE_MKDOCS_2_WARNING=true`** (pymdownx — silences the follow-up ProperDocs notice). **`pyproject.toml`** also pins **`mkdocs>=1.6,<2`** so dependency resolution does not upgrade into a future incompatible MkDocs major until the project explicitly changes that bound (after checking plugin support, or evaluating alternatives such as [ProperDocs](https://properdocs.org/) when they cover this plugin set).
+
+### Internal architecture
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant CLI as Typer CLI
+  participant TUI as Trogon TUI
+  participant Form as Textual command form
+  participant API as gpxmapper.api
+  User ->> CLI: gpxmapper tui
+  CLI ->> TUI: init_tui(app, name=gpxmapper)
+  TUI ->> Form: Render command controls
+  User ->> Form: Configure options
+  Form ->> TUI: Build command arguments
+  TUI ->> CLI: Execute selected command
+  CLI ->> API: Call API operation
+  API -->> CLI: Return result
+  CLI -->> TUI: Display command output
+  TUI -->> User: Show live result
+```
 
 ## Installation
 
@@ -247,7 +268,14 @@ gpxmapper.exe info path\to\your\file.gpx
 
 ### Launch the interactive Terminal User Interface (TUI)
 
-GPXMapper includes an interactive, browser-like Terminal User Interface (TUI) powered by Textual and Trogon. It lets you explore options, fill out parameters, and execute commands interactively in the terminal.
+GPXMapper includes a feature-rich, interactive Terminal User Interface (TUI) powered by Textual and Trogon. It lets you discover commands, configure parameters with rich custom widgets, and execute operations interactively in the terminal.
+
+Key TUI features:
+- **Categorized Option Groups**: Command parameters for `generate` are logically grouped into visual sections (`📁 Output & File Options`, `⏱ Video Dimensions & Timing`, `🗺 Map & Marker Styling`, `🔤 Typography & Text Overlay`, `💬 Captions & Geolocation`).
+- **Interactive Range Sliders**: Numerical parameters with min/max bounds (`--duration`, `--fps`, `--width`, `--height`, `--zoom`, `--marker-size`, `--font-scale`, `--scrolling-speed`) feature interactive `<` / `>` step buttons, track bar indicators (`━●─`), keyboard controls (`←`/`→`), and live command string updates.
+- **Native Checkboxes & Choice Dropdowns**: Boolean flags (`--no-timestamp`, `--geolocate`) render as direct checkboxes, and enum parameters provide pre-populated selection dropdowns.
+- **Custom About Modal**: Accessible within the TUI to view project metadata, versioning, author info, repository links, and framework credits.
+- **In-Process CLI Execution**: Runs generated commands seamlessly within the same process without external subshell requirements.
 
 For Python installation:
 
@@ -267,7 +295,7 @@ gpxmapper.exe tui
 
 ### `tui` command
 
-Opens the interactive Terminal User Interface (TUI) for discovering and running all GPXMapper commands.
+Opens the interactive Terminal User Interface (TUI) for discovering and running all GPXMapper commands (`generate`, `info`, `clear-cache`, `check-nominatim`).
 
 ### `generate` command
 

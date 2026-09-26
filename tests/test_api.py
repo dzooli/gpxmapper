@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import ANY
 
 import pytest
 
@@ -16,6 +17,10 @@ from gpxmapper.api import (
     get_gpx_info,
     get_tile_cache_info,
     parse_color,
+    resolve_configs,
+    resolve_map_config,
+    resolve_text_config,
+    resolve_video_config,
 )
 from gpxmapper.exceptions import (
     ConfigurationError,
@@ -117,6 +122,27 @@ def test_create_text_config_geolocate_conflict():
         create_text_config(geolocate=True, scrolling_text_file="some_file.txt")
 
 
+def test_resolve_configs_direct_helpers():
+    v = resolve_video_config(options={"fps": 60, "duration": 120})
+    assert v.fps == 60
+    assert v.duration == 120
+    assert v.width == 320
+
+    m = resolve_map_config(options={"zoom": 17, "marker_color": "0,255,0"})
+    assert m.zoom == 17
+    assert m.marker_color == (0, 255, 0)
+
+    t = resolve_text_config(options={"title": "My Track", "text_color": "1,2,3", "show_timestamp": True})
+    assert t.title_text == "My Track"
+    assert t.timestamp_color == (1, 2, 3)
+    assert t.show_timestamp is True
+
+    vc, mc, tc = resolve_configs(options={"fps": 24, "zoom": 10, "title": "Trip"})
+    assert vc.fps == 24
+    assert mc.zoom == 10
+    assert tc.title_text == "Trip"
+
+
 # --- GPX Info ---
 
 
@@ -165,11 +191,18 @@ def test_generate_video_no_timestamps_raises(gpx_no_times: Path, tmp_path: Path)
         generate_video(gpx_file=gpx_no_times, output_file=out)
 
 
-def test_generate_video_success_mocked(gpx_with_times: Path, tmp_path: Path, mocker):
-    out = tmp_path / "out.mp4"
-    mock_gen_instance = mocker.MagicMock()
-    mock_gen_instance.generate_video.return_value = str(out)
-    mocker.patch("gpxmapper.api.video.VideoGenerator", return_value=mock_gen_instance)
+@pytest.fixture
+def mock_video_generator(mocker, tmp_path: Path):
+    """Fixture providing a mocked VideoGenerator and output path."""
+    out = tmp_path / "output.mp4"
+    mock_cls = mocker.patch("gpxmapper.api.video.VideoGenerator")
+    instance = mock_cls.return_value
+    instance.generate_video.return_value = str(out)
+    return out, mock_cls, instance
+
+
+def test_generate_video_success_mocked(gpx_with_times: Path, mock_video_generator):
+    out, _, mock_instance = mock_video_generator
 
     result = generate_video(
         gpx_file=gpx_with_times,
@@ -180,7 +213,7 @@ def test_generate_video_success_mocked(gpx_with_times: Path, tmp_path: Path, moc
     )
 
     assert result == str(out)
-    mock_gen_instance.generate_video.assert_called_once()
+    mock_instance.generate_video.assert_called_once()
 
 
 def test_generate_video_failure_wraps_exception(gpx_with_times: Path, tmp_path: Path, mocker):
@@ -191,6 +224,92 @@ def test_generate_video_failure_wraps_exception(gpx_with_times: Path, tmp_path: 
 
     with pytest.raises(VideoGenerationError, match="OpenCV encoder crash"):
         generate_video(gpx_file=gpx_with_times, output_file=out)
+
+
+def test_generate_video_convenience_kwargs_example(gpx_with_times: Path, mock_video_generator):
+    """Test the exact documented example from README.md with convenience kwargs."""
+    out, mock_cls, mock_instance = mock_video_generator
+
+    result = generate_video(
+        gpx_path=gpx_with_times,
+        output_path=out,
+        duration=60,
+        fps=30,
+        width=1280,
+        height=720,
+        zoom=15,
+        marker_color=(255, 0, 0),
+        title="Morning Ride",
+        text_color=(255, 255, 255),
+    )
+
+    assert result == str(out)
+    mock_cls.assert_called_once()
+    _, kwargs = mock_cls.call_args
+    assert kwargs["output_path"] == str(out)
+    assert kwargs["fps"] == 30
+    assert kwargs["resolution"] == (1280, 720)
+    assert kwargs["zoom_level"] == 15
+    assert kwargs["marker_color"] == (255, 0, 0)
+    assert kwargs["marker_size"] == 10
+    assert kwargs["text_config"].title_text == "Morning Ride"
+    assert kwargs["text_config"].timestamp_color == (255, 255, 255)
+    mock_instance.generate_video.assert_called_once_with(ANY, 60)
+
+
+def test_generate_video_missing_gpx_path_raises():
+    with pytest.raises(ValueError, match="A GPX file path must be provided"):
+        generate_video()
+
+
+def test_generate_video_convenience_string_colors_and_options(gpx_with_times: Path, mock_video_generator):
+    out, mock_cls, _ = mock_video_generator
+
+    result = generate_video(
+        gpx_file=gpx_with_times,
+        output_file=out,
+        marker_color="0,128,255",
+        marker_size=12,
+        title_text="Custom Title",
+        text_color="10,20,30",
+        font_scale=1.2,
+        text_align="center",
+        no_timestamp=True,
+    )
+
+    assert result == str(out)
+    _, kwargs = mock_cls.call_args
+    assert kwargs["marker_color"] == (0, 128, 255)
+    assert kwargs["marker_size"] == 12
+    assert kwargs["text_config"].title_text == "Custom Title"
+    assert kwargs["text_config"].timestamp_color == (10, 20, 30)
+    assert kwargs["text_config"].font_scale == 1.2
+    assert kwargs["text_config"].text_align == "center"
+    assert kwargs["text_config"].show_timestamp is False
+
+
+def test_generate_video_config_with_keyword_overrides(gpx_with_times: Path, mock_video_generator):
+    out, mock_cls, mock_instance = mock_video_generator
+
+    result = generate_video(
+        gpx_file=gpx_with_times,
+        output_file=out,
+        video_config=VideoConfig(fps=24, width=640, height=480, duration=10),
+        map_config=MapConfig(zoom=10, marker_size=5, marker_color=(0, 0, 0)),
+        text_config=create_text_config(title_text="Base Title", font_scale=0.8),
+        duration=45,
+        zoom=14,
+        title="Overridden Title",
+    )
+
+    assert result == str(out)
+    _, kwargs = mock_cls.call_args
+    assert kwargs["fps"] == 24
+    assert kwargs["resolution"] == (640, 480)
+    assert kwargs["zoom_level"] == 14
+    assert kwargs["text_config"].title_text == "Overridden Title"
+    assert kwargs["text_config"].font_scale == 0.8
+    mock_instance.generate_video.assert_called_once_with(ANY, 45)
 
 
 # --- Cache Services ---

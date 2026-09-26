@@ -12,7 +12,14 @@ from .cache import (
     get_geolocation_cache_info,
     get_tile_cache_info,
 )
-from .config import create_text_config, parse_color
+from .config import (
+    create_text_config,
+    parse_color,
+    resolve_configs,
+    resolve_map_config,
+    resolve_text_config,
+    resolve_video_config,
+)
 from .info import get_gpx_info
 from .nominatim import check_nominatim_status
 from .video import generate_video
@@ -27,4 +34,8 @@ __all__ = [
     "check_nominatim_status",
     "parse_color",
     "create_text_config",
+    "resolve_video_config",
+    "resolve_map_config",
+    "resolve_text_config",
+    "resolve_configs",
 ]
